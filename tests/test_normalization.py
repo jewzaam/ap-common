@@ -92,6 +92,39 @@ class TestNormalizeDate:
         result = normalize_date("invalid-date")
         assert result == "invalid-date"
 
+    def test_timezone_offset_parameter(self):
+        """Test timezone_offset_from_gmt parameter."""
+        # UTC is 0, so total offset is 0 - 12 = -12 → stays on same day
+        result_utc = normalize_date("2024-01-15T12:30:45", timezone_offset_from_gmt=0.0)
+        # EST is -4, so total offset is -4 - 12 = -16 → previous day
+        result_est = normalize_date(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=-4.0
+        )
+        # Positive timezone (e.g., +5 for India) would be +5 - 12 = -7 → same day
+        result_positive = normalize_date(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=5.0
+        )
+
+        # UTC should stay on same day (2024-01-15), EST should be previous day (2024-01-14)
+        assert result_utc == "2024-01-15"
+        assert result_est == "2024-01-14"
+        # Positive timezone should also stay on same day
+        assert result_positive == "2024-01-15"
+        # Verify they produce different results where expected
+        assert result_utc != result_est
+        assert result_positive != result_est
+
+    def test_system_timezone_default(self):
+        """Test that system timezone is used when timezone_offset_from_gmt is None."""
+        # Test that calling without timezone uses system timezone (not hardcoded)
+        result_with_none = normalize_date(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=None
+        )
+        result_without_param = normalize_date("2024-01-15T12:30:45")
+
+        # Both should use system timezone and produce same result
+        assert result_with_none == result_without_param
+
 
 class TestNormalizeDatetime:
     """Tests for normalize_datetime function."""
@@ -112,6 +145,40 @@ class TestNormalizeDatetime:
         """Test datetime with timezone."""
         result = normalize_datetime("2024-01-15T12:30:45Z")
         assert isinstance(result, str)
+
+    def test_timezone_offset_parameter(self):
+        """Test timezone_offset_from_gmt parameter for datetime."""
+        # UTC is 0, so total offset is 0 - 12 = -12 → stays on same day
+        result_utc = normalize_datetime(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=0.0
+        )
+        # EST is -4, so total offset is -4 - 12 = -16 → previous day
+        result_est = normalize_datetime(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=-4.0
+        )
+        # Positive timezone (e.g., +5 for India) would be +5 - 12 = -7 → same day
+        result_positive = normalize_datetime(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=5.0
+        )
+
+        # UTC should stay on same day, EST should be previous day
+        assert "2024-01-15" in result_utc
+        assert "2024-01-14" in result_est
+        assert "2024-01-15" in result_positive
+        # Verify they produce different results where expected
+        assert result_utc != result_est
+        assert result_positive != result_est
+
+    def test_system_timezone_default(self):
+        """Test that system timezone is used when timezone_offset_from_gmt is None."""
+        # Test that calling without timezone uses system timezone (not hardcoded)
+        result_with_none = normalize_datetime(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=None
+        )
+        result_without_param = normalize_datetime("2024-01-15T12:30:45")
+
+        # Both should use system timezone and produce same result
+        assert result_with_none == result_without_param
 
     def test_custom_formats(self):
         """Test with custom formats."""

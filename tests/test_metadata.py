@@ -238,13 +238,31 @@ class TestEnrichMetadata:
         data = {"file1.cr2": {"filename": "file1.cr2"}}
 
         # CR2 files only get enriched if required_properties are specified
+        # Location is not available from CR2 file headers, so it must be provided
         result = enrich_metadata(
-            data, profileFromPath=False, required_properties=["latitude"]
+            data,
+            profileFromPath=False,
+            required_properties=["latitude"],
+            latitude="40.7128",
+            longitude="-74.0060",
         )
 
-        # CR2 files get default latitude/longitude when enriched
-        assert result["file1.cr2"]["latitude"] == "35.6"
-        assert result["file1.cr2"]["longitude"] == "-78.8"
+        # CR2 files get latitude/longitude from provided parameters
+        assert result["file1.cr2"]["latitude"] == "40.7128"
+        assert result["file1.cr2"]["longitude"] == "-74.0060"
+
+    def test_enrich_cr2_file_missing_location_error(self):
+        """Test that enriching CR2 file without location raises error when required."""
+        data = {"file1.cr2": {"filename": "file1.cr2"}}
+
+        # CR2 files require location to be provided if it's in required_properties
+        with pytest.raises(ValueError, match="Required property 'latitude' is missing"):
+            enrich_metadata(
+                data,
+                profileFromPath=False,
+                required_properties=["latitude"],
+                # latitude and longitude not provided
+            )
 
     def test_no_enrichment_needed(self):
         """Test that files with all properties don't need enrichment."""

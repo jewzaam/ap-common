@@ -16,6 +16,8 @@ def get_metadata(
     required_properties: list = None,
     debug: bool = False,
     printStatus: bool = False,
+    latitude: str = None,
+    longitude: str = None,
 ):
     """
     Loads metadata for files in the given directories, ensuring all required properties are present.
@@ -29,9 +31,15 @@ def get_metadata(
         required_properties: List of properties that must be present in metadata
         debug: Print debug information
         printStatus: Print status updates during processing
+        latitude: Optional latitude override for files that don't have location data (e.g., CR2 files)
+        longitude: Optional longitude override for files that don't have location data (e.g., CR2 files)
 
     Returns:
         Dictionary mapping filenames to their metadata dictionaries
+
+    Raises:
+        ValueError: If latitude or longitude is required (in required_properties) but not found
+            in file headers and not provided as parameters
     """
     if patterns is None:
         patterns = [r".*\.fits$"]
@@ -80,6 +88,8 @@ def get_metadata(
         debug=debug,
         printStatus=printStatus,
         profileFromPath=profileFromPath,
+        latitude=None,
+        longitude=None,
     )
 
 
@@ -89,6 +99,8 @@ def enrich_metadata(
     required_properties: list = None,
     debug: bool = False,
     printStatus: bool = False,
+    latitude: str = None,
+    longitude: str = None,
 ):
     """
     Enriches metadata for files missing required properties by extracting additional headers from the files themselves.
@@ -100,9 +112,15 @@ def enrich_metadata(
         required_properties: List of properties that must be present
         debug: Print debug information
         printStatus: Print status updates during processing
+        latitude: Optional latitude override for files that don't have location data (e.g., CR2 files)
+        longitude: Optional longitude override for files that don't have location data (e.g., CR2 files)
 
     Returns:
         Dictionary with enriched metadata
+
+    Raises:
+        ValueError: If latitude or longitude is required (in required_properties) but not found
+            in file headers and not provided as parameters
     """
     if required_properties is None:
         required_properties = []
@@ -147,10 +165,12 @@ def enrich_metadata(
             )
         else:
             # some other file type, probably cr2
-            # can only default the location to "home"
-            # TODO add some actual default to locations in ap database?
-            datum["latitude"] = "35.6"
-            datum["longitude"] = "-78.8"
+            # Location not available from file headers
+            # Use provided latitude/longitude if available, otherwise leave unset
+            if latitude is not None:
+                datum["latitude"] = latitude
+            if longitude is not None:
+                datum["longitude"] = longitude
             # we can do no more, treat datum as if it were enriched.
             enriched = datum
 
@@ -190,6 +210,19 @@ def enrich_metadata(
     # make sure 'filename' is always set.  enrich will strip it.
     for filename in data.keys():
         data[filename]["filename"] = filename
+
+    # Validate that required properties are present, especially location if required
+    for filename in data.keys():
+        datum = data[filename]
+        for rp in required_properties:
+            if rp in ["latitude", "longitude"]:
+                if rp not in datum or datum[rp] is None or len(str(datum[rp])) == 0:
+                    raise ValueError(
+                        f"Required property '{rp}' is missing for file '{filename}'. "
+                        f"Location data is not available from file headers. "
+                        f"Please provide latitude and/or longitude parameters to enrich_metadata() "
+                        f"or ensure the file contains location information in its headers."
+                    )
 
     return data
 
@@ -302,6 +335,8 @@ def get_filtered_metadata(
     required_properties: list = None,
     debug: bool = False,
     printStatus: bool = False,
+    latitude: str = None,
+    longitude: str = None,
 ):
     """
     Loads metadata for files in given directories, then filters the metadata based on provided filters and required properties.
@@ -315,9 +350,15 @@ def get_filtered_metadata(
         required_properties: List of properties that must be present
         debug: Print debug information
         printStatus: Print status updates during processing
+        latitude: Optional latitude override for files that don't have location data (e.g., CR2 files)
+        longitude: Optional longitude override for files that don't have location data (e.g., CR2 files)
 
     Returns:
         Filtered dictionary with only matching entries
+
+    Raises:
+        ValueError: If latitude or longitude is required (in required_properties) but not found
+            in file headers and not provided as parameters
     """
     if patterns is None:
         patterns = [r".*\.fits$"]
@@ -336,6 +377,8 @@ def get_filtered_metadata(
         debug=debug,
         printStatus=printStatus,
         profileFromPath=profileFromPath,
+        latitude=latitude,
+        longitude=longitude,
     )
 
     metadata = filter_metadata(
