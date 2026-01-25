@@ -24,8 +24,9 @@ clean:
 	rm -rf build/
 	rm -rf dist/
 	rm -rf *.egg-info
-	find . -type d -name __pycache__ -exec rm -r {} +
-	find . -type f -name "*.pyc" -delete
+	rm -rf ap_common.egg-info
+	find . -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
 # Format code with black
 format:
