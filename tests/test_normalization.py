@@ -138,7 +138,9 @@ class TestNormalizeDatetime:
         """Test standard datetime format."""
         # Use explicit timezone offset to make test deterministic
         # System timezone may vary, so use explicit EST (-4)
-        result = normalize_datetime("2024-01-15T12:30:45", timezone_offset_from_gmt=-4.0)
+        result = normalize_datetime(
+            "2024-01-15T12:30:45", timezone_offset_from_gmt=-4.0
+        )
         assert isinstance(result, str)
         assert "_" in result  # Should be YYYY-MM-DD_HH-MM-SS format
         assert "2024-01-14" in result  # Should be previous day with -16 hour offset
