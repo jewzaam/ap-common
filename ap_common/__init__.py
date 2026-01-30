@@ -23,7 +23,7 @@ from ap_common.metadata import (
     get_filtered_metadata,
     filter_metadata,
 )
-from ap_common.utils import replace_env_vars, camelCase, get_filenames
+from ap_common.utils import replace_env_vars, resolve_path, camelCase, get_filenames
 from ap_common.progress import progress_iter, ProgressTracker
 from ap_common.logging_config import setup_logging, get_logger
 from ap_common.constants import (
@@ -118,6 +118,7 @@ __all__ = [
     "filter_metadata",
     # Utility functions
     "replace_env_vars",
+    "resolve_path",
     "camelCase",
     "get_filenames",
     # Progress utilities
