@@ -169,9 +169,12 @@ def get_xisf_headers(
     output = {}
 
     if file_naming_override:
+        # Don't normalize yet - use raw keys so the "if k in output" check
+        # correctly detects duplicate keys between filename and XISF headers.
+        # Normalization happens at the end after all headers are collected.
         output = get_file_headers(
             filename,
-            normalize=normalize,
+            normalize=False,
             profileFromPath=profileFromPath,
             directory_accept=directory_accept,
         )

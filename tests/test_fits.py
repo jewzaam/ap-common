@@ -286,3 +286,34 @@ class TestGetXisfHeaders:
 
         # Should have normalized keys
         assert "filter" in result or "exposureseconds" in result
+
+    @patch("ap_common.fits.xisf")
+    def test_xisf_filename_override_takes_precedence(self, mock_xisf):
+        """Test that filename-parsed values override XISF file header values.
+
+        Bug fix test for https://github.com/jewzaam/ap-common/issues/15
+        A file named masterDark_EXPOSURE_100.00_...xisf should use the exposure
+        value from the filename (100), not the value from the XISF header (300).
+        """
+        # XISF file contains EXPOSURE of 300 in its header
+        mock_metadata = [
+            {
+                "FITSKeywords": {
+                    "FILTER": [{"value": "Ha"}],
+                    "EXPOSURE": [{"value": "300"}],
+                }
+            }
+        ]
+        mock_xisf_file = Mock()
+        mock_xisf_file.get_images_metadata.return_value = mock_metadata
+        mock_xisf.XISF.return_value = mock_xisf_file
+
+        # Filename indicates EXPOSURE of 100
+        filename = "/path/masterDark_EXPOSURE_100.00_file.xisf"
+        result = get_xisf_headers(
+            filename, profileFromPath=False, file_naming_override=True, normalize=True
+        )
+
+        # Filename value (100) should take precedence over file header value (300)
+        assert "exposureseconds" in result
+        assert result["exposureseconds"] == "100.00"
