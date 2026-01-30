@@ -405,3 +405,43 @@ class TestNormalizeFilename:
         result = normalize_filename("/output", "test.fits", headers)
         assert "HFR_2.5" in result
         assert "STARS_150" in result
+
+    def test_light_filename_without_focal_ratio(self):
+        """Test LIGHT filename when focal_ratio is missing.
+
+        This tests the fix for issue #13 - should not raise KeyError when focal_ratio is missing.
+        """
+        headers = {
+            "type": "LIGHT",
+            "optic": "Refractor",
+            "camera": "Camera1",
+            # Deliberately missing: focal_ratio
+            "date": "2024-01-15",
+            "exposureseconds": "120.00",
+            "datetime": "2024-01-15_12-30-45",
+            "filter": "Ha",
+            "targetname": "M42",
+        }
+        result = normalize_filename("/output", "test.fits", headers)
+        # Should use optic+camera format without focal_ratio
+        assert "Refractor+Camera1" in result
+        assert "@f" not in result  # No focal ratio in path
+        assert "M42" in result
+
+    def test_light_filename_with_null_focal_ratio(self):
+        """Test LIGHT filename when focal_ratio exists but is None."""
+        headers = {
+            "type": "LIGHT",
+            "optic": "Refractor",
+            "camera": "Camera1",
+            "focal_ratio": None,  # Exists but is None
+            "date": "2024-01-15",
+            "exposureseconds": "120.00",
+            "datetime": "2024-01-15_12-30-45",
+            "filter": "Ha",
+            "targetname": "M42",
+        }
+        result = normalize_filename("/output", "test.fits", headers)
+        # Should use optic+camera format without focal_ratio
+        assert "Refractor+Camera1" in result
+        assert "@f" not in result  # No focal ratio in path

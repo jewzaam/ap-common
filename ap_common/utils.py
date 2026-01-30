@@ -9,6 +9,44 @@ import re
 import zipfile
 
 
+def build_profile(headers: dict) -> str:
+    """
+    Build a profile string from optic, focal_ratio, and camera headers.
+
+    Args:
+        headers: Dictionary containing header values
+
+    Returns:
+        Profile string built from available components:
+        - Full: "Refractor@f5.6+Camera1"
+        - No focal_ratio: "Refractor+Camera1"
+        - No camera: "Refractor@f5.6"
+        - Only optic: "Refractor"
+        - Only camera: "Camera1"
+        - Only focal_ratio: None (not useful alone)
+        - Nothing available: None
+    """
+    optic = headers.get("optic")
+    focal_ratio = headers.get("focal_ratio")
+    camera = headers.get("camera")
+
+    parts = []
+
+    if optic:
+        part = optic
+        if focal_ratio:
+            part = f"{part}@f{focal_ratio}"
+        parts.append(part)
+
+    if camera:
+        parts.append(camera)
+
+    if not parts:
+        return None
+
+    return "+".join(parts)
+
+
 def replace_env_vars(input: str):
     """
     Replaces environment variable placeholders in a string with their actual values from the OS environment.

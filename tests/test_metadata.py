@@ -292,6 +292,107 @@ class TestEnrichMetadata:
 
         assert result["file1.fits"]["filename"] == "file1.fits"
 
+    @patch("ap_common.metadata.get_fits_headers")
+    def test_enrich_with_missing_profile_keys_and_print_status(self, mock_get_fits):
+        """Test enriching metadata with printStatus=True but missing optic/focal_ratio/camera keys.
+
+        This tests the fix for issue #13 - should not raise KeyError when profile keys are missing.
+        """
+        # Return enriched data that has targetname but is missing optic, focal_ratio, camera
+        mock_get_fits.return_value = {
+            "type": "LIGHT",
+            "targetname": "M42",
+            # Deliberately missing: optic, focal_ratio, camera
+        }
+
+        data = {"file1.fits": {"filename": "file1.fits", "type": None}}
+
+        # Should not raise KeyError even with printStatus=True
+        result = enrich_metadata(
+            data,
+            profileFromPath=False,
+            required_properties=["type"],
+            printStatus=True,
+        )
+
+        assert result["file1.fits"]["type"] == "LIGHT"
+        assert result["file1.fits"]["targetname"] == "M42"
+        # Profile should be None when keys are missing
+        assert result["file1.fits"]["profile"] is None
+
+    @patch("ap_common.metadata.get_fits_headers")
+    def test_enrich_with_partial_profile_keys_and_print_status(self, mock_get_fits):
+        """Test enriching with only some profile keys present (e.g., optic but no focal_ratio)."""
+        mock_get_fits.return_value = {
+            "type": "LIGHT",
+            "targetname": "M42",
+            "optic": "Refractor",
+            "camera": "Camera1",
+            # Deliberately missing: focal_ratio
+        }
+
+        data = {"file1.fits": {"filename": "file1.fits", "type": None}}
+
+        # Should not raise KeyError
+        result = enrich_metadata(
+            data,
+            profileFromPath=False,
+            required_properties=["type"],
+            printStatus=True,
+        )
+
+        assert result["file1.fits"]["optic"] == "Refractor"
+        assert result["file1.fits"]["camera"] == "Camera1"
+        # Profile should be built from available keys
+        assert result["file1.fits"]["profile"] == "Refractor+Camera1"
+
+    @patch("ap_common.metadata.get_fits_headers")
+    def test_enrich_with_null_profile_keys_and_print_status(self, mock_get_fits):
+        """Test enriching when profile keys exist but are None."""
+        mock_get_fits.return_value = {
+            "type": "LIGHT",
+            "targetname": "M42",
+            "optic": "Refractor",
+            "focal_ratio": None,  # Exists but is None
+            "camera": "Camera1",
+        }
+
+        data = {"file1.fits": {"filename": "file1.fits", "type": None}}
+
+        # Should not raise KeyError - None values should be handled gracefully
+        result = enrich_metadata(
+            data,
+            profileFromPath=False,
+            required_properties=["type"],
+            printStatus=True,
+        )
+
+        assert result["file1.fits"]["focal_ratio"] is None
+        # Profile should be built from available keys, skipping None values
+        assert result["file1.fits"]["profile"] == "Refractor+Camera1"
+
+    @patch("ap_common.metadata.get_fits_headers")
+    def test_enrich_with_all_profile_keys_sets_profile(self, mock_get_fits):
+        """Test that profile is correctly set when all keys are present."""
+        mock_get_fits.return_value = {
+            "type": "LIGHT",
+            "targetname": "M42",
+            "optic": "Refractor",
+            "focal_ratio": "5.6",
+            "camera": "Camera1",
+        }
+
+        data = {"file1.fits": {"filename": "file1.fits", "type": None}}
+
+        result = enrich_metadata(
+            data,
+            profileFromPath=False,
+            required_properties=["type"],
+        )
+
+        # Profile should be constructed correctly
+        assert result["file1.fits"]["profile"] == "Refractor@f5.6+Camera1"
+
 
 class TestGetFilteredMetadata:
     """Tests for get_filtered_metadata function."""

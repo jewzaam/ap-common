@@ -8,6 +8,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
+from ap_common.utils import build_profile
+
 # Date/datetime format constants
 # These can be overridden by projects that need different formats
 INPUT_FORMAT_DATETIME = r"%Y-%m-%dT%H:%M:%S"
@@ -294,9 +296,8 @@ def normalize_filename(
         # so we leave focal ratio out for flats.
         output.append(f"{headers['optic']}+{headers['camera']}")
     elif type == "LIGHT":
-        output.append(
-            f"{headers['optic']}@f{headers['focal_ratio']}+{headers['camera']}"
-        )
+        # Use build_profile for consistent profile string construction
+        output.append(build_profile(headers))
 
     if type == "LIGHT":
         if statedir is not None and len(statedir) > 0:
