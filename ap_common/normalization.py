@@ -297,11 +297,7 @@ def normalize_filename(
         output.append(f"{headers['optic']}+{headers['camera']}")
     elif type == "LIGHT":
         # Use build_profile for consistent profile string construction
-        profile = build_profile(headers)
-        if profile:
-            output.append(profile)
-        else:
-            output.append(f"{headers['optic']}+{headers['camera']}")
+        output.append(build_profile(headers))
 
     if type == "LIGHT":
         if statedir is not None and len(statedir) > 0:

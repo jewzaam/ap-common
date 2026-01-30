@@ -20,60 +20,90 @@ class TestBuildProfile:
         }
         assert build_profile(headers) == "Refractor@f5.6+Camera1"
 
-    def test_missing_optic(self):
-        """Test returns None when optic is missing."""
+    def test_missing_optic_has_camera(self):
+        """Test returns just camera when optic is missing."""
         headers = {
             "focal_ratio": "5.6",
             "camera": "Camera1",
         }
-        assert build_profile(headers) is None
+        assert build_profile(headers) == "Camera1"
 
     def test_missing_focal_ratio(self):
-        """Test returns None when focal_ratio is missing."""
+        """Test returns optic+camera when focal_ratio is missing."""
         headers = {
             "optic": "Refractor",
             "camera": "Camera1",
         }
-        assert build_profile(headers) is None
+        assert build_profile(headers) == "Refractor+Camera1"
 
     def test_missing_camera(self):
-        """Test returns None when camera is missing."""
+        """Test returns optic@ffocal_ratio when camera is missing."""
         headers = {
             "optic": "Refractor",
+            "focal_ratio": "5.6",
+        }
+        assert build_profile(headers) == "Refractor@f5.6"
+
+    def test_only_optic(self):
+        """Test returns just optic when only optic is present."""
+        headers = {
+            "optic": "Refractor",
+        }
+        assert build_profile(headers) == "Refractor"
+
+    def test_only_camera(self):
+        """Test returns just camera when only camera is present."""
+        headers = {
+            "camera": "Camera1",
+        }
+        assert build_profile(headers) == "Camera1"
+
+    def test_only_focal_ratio(self):
+        """Test returns None when only focal_ratio is present (doesn't make sense alone)."""
+        headers = {
             "focal_ratio": "5.6",
         }
         assert build_profile(headers) is None
 
     def test_optic_is_none(self):
-        """Test returns None when optic is None."""
+        """Test optic None is skipped, returns camera."""
         headers = {
             "optic": None,
             "focal_ratio": "5.6",
             "camera": "Camera1",
         }
-        assert build_profile(headers) is None
+        assert build_profile(headers) == "Camera1"
 
     def test_focal_ratio_is_none(self):
-        """Test returns None when focal_ratio is None."""
+        """Test focal_ratio None is skipped."""
         headers = {
             "optic": "Refractor",
             "focal_ratio": None,
             "camera": "Camera1",
         }
-        assert build_profile(headers) is None
+        assert build_profile(headers) == "Refractor+Camera1"
 
     def test_camera_is_none(self):
-        """Test returns None when camera is None."""
+        """Test camera None is skipped."""
         headers = {
             "optic": "Refractor",
             "focal_ratio": "5.6",
             "camera": None,
         }
-        assert build_profile(headers) is None
+        assert build_profile(headers) == "Refractor@f5.6"
 
     def test_empty_dict(self):
         """Test returns None for empty dict."""
         assert build_profile({}) is None
+
+    def test_all_none(self):
+        """Test returns None when all values are None."""
+        headers = {
+            "optic": None,
+            "focal_ratio": None,
+            "camera": None,
+        }
+        assert build_profile(headers) is None
 
     def test_extra_keys_ignored(self):
         """Test that extra keys don't affect the result."""
