@@ -27,6 +27,7 @@ classifiers = [
 
 dependencies = [
     "astropy",
+    "tqdm",
     "xisf==0.9.5",
 ]
 
