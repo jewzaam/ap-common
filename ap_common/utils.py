@@ -9,6 +9,25 @@ import re
 import zipfile
 
 
+def build_profile(headers: dict) -> str:
+    """
+    Build a profile string from optic, focal_ratio, and camera headers.
+
+    Args:
+        headers: Dictionary containing header values
+
+    Returns:
+        Profile string like "Refractor@f5.6+Camera1" if all keys present and not None,
+        otherwise None
+    """
+    if all(
+        key in headers and headers[key] is not None
+        for key in ["optic", "focal_ratio", "camera"]
+    ):
+        return f"{headers['optic']}@f{headers['focal_ratio']}+{headers['camera']}"
+    return None
+
+
 def replace_env_vars(input: str):
     """
     Replaces environment variable placeholders in a string with their actual values from the OS environment.
