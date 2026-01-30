@@ -294,9 +294,13 @@ def normalize_filename(
         # so we leave focal ratio out for flats.
         output.append(f"{headers['optic']}+{headers['camera']}")
     elif type == "LIGHT":
-        output.append(
-            f"{headers['optic']}@f{headers['focal_ratio']}+{headers['camera']}"
-        )
+        # Include focal_ratio in path if available, otherwise omit it
+        if "focal_ratio" in headers and headers["focal_ratio"] is not None:
+            output.append(
+                f"{headers['optic']}@f{headers['focal_ratio']}+{headers['camera']}"
+            )
+        else:
+            output.append(f"{headers['optic']}+{headers['camera']}")
 
     if type == "LIGHT":
         if statedir is not None and len(statedir) > 0:
