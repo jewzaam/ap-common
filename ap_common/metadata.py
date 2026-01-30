@@ -183,7 +183,9 @@ def enrich_metadata(
             and last_targetname != enriched["targetname"]
         ):
             last_targetname = enriched["targetname"]
-            profilename = enriched["profile"] if enriched["profile"] else "profile unknown"
+            profilename = (
+                enriched["profile"] if enriched["profile"] else "profile unknown"
+            )
             if last_profilename is not None:
                 # we have already printed something, so we need a newline for the next target.
                 print("")
