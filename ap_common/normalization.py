@@ -38,22 +38,13 @@ def _get_timezone_offset_from_gmt(timezone_offset_from_gmt: float = None) -> flo
 
 def normalize_filterName(name: str):
     """
-    Normalizes filter names to standard short forms for known filters.
+    Returns the filter name unchanged.
+
+    This function previously normalized filter names to short forms,
+    but those transformations have been removed as they were specific
+    to certain filter configurations that are no longer in use.
     """
-    output = name
-    if name == "BaaderUVIRCut":
-        output = "UVIR"
-    elif name == "OptolongLeXtreme":
-        output = "LeXtr"
-    elif name == "S2":
-        output = "S"
-    elif name == "Ha":
-        output = "H"
-    elif name == "O3":
-        output = "O"
-    elif name == "":
-        output = "RGB"
-    return output
+    return name
 
 
 def normalize_date(
@@ -424,8 +415,4 @@ FILTER_NORMALIZATION_DATA = {
     },
     "OBSGEO-L": {"longitude": (lambda x: "{0:.1f}".format(float(x)))},
     "READOUTM": {"readoutmode": str},
-    # M 42_15s60_Astro_20250413-193110677_27C.fits
-    "astro": {"filter": (lambda x: "Astro")},
-    # M 42_15s60_Duo-Band_20250413-193110677_27C.fits
-    "duo-band": {"filter": (lambda x: "Duo-Band")},
 }

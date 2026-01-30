@@ -17,35 +17,25 @@ from ap_common.normalization import (
 
 
 class TestNormalizeFilterName:
-    """Tests for normalize_filterName function."""
+    """Tests for normalize_filterName function.
 
-    def test_baader_uvir_cut(self):
-        """Test BaaderUVIRCut normalization."""
-        assert normalize_filterName("BaaderUVIRCut") == "UVIR"
+    Note: Filter name transformations have been removed. The function
+    now returns filter names unchanged.
+    """
 
-    def test_optolong_lextreme(self):
-        """Test OptolongLeXtreme normalization."""
-        assert normalize_filterName("OptolongLeXtreme") == "LeXtr"
-
-    def test_s2(self):
-        """Test S2 normalization."""
-        assert normalize_filterName("S2") == "S"
-
-    def test_ha(self):
-        """Test Ha normalization."""
-        assert normalize_filterName("Ha") == "H"
-
-    def test_o3(self):
-        """Test O3 normalization."""
-        assert normalize_filterName("O3") == "O"
-
-    def test_empty_string(self):
-        """Test empty string normalization."""
-        assert normalize_filterName("") == "RGB"
-
-    def test_unknown_filter(self):
-        """Test unknown filter returns unchanged."""
+    def test_filter_returned_unchanged(self):
+        """Test that filter names are returned unchanged."""
+        assert normalize_filterName("BaaderUVIRCut") == "BaaderUVIRCut"
+        assert normalize_filterName("OptolongLeXtreme") == "OptolongLeXtreme"
+        assert normalize_filterName("S2") == "S2"
+        assert normalize_filterName("Ha") == "Ha"
+        assert normalize_filterName("O3") == "O3"
+        assert normalize_filterName("") == ""
         assert normalize_filterName("UnknownFilter") == "UnknownFilter"
+        assert normalize_filterName("L") == "L"
+        assert normalize_filterName("R") == "R"
+        assert normalize_filterName("G") == "G"
+        assert normalize_filterName("B") == "B"
 
 
 class TestNormalizeDate:
@@ -237,7 +227,7 @@ class TestNormalizeHeaders:
         headers = {"FILTER": "Ha", "EXPOSURE": "60.0", "IMAGETYP": "light"}
         result = normalize_headers(headers)
         assert "filter" in result
-        assert result["filter"] == "H"  # Ha -> H
+        assert result["filter"] == "Ha"  # Filter names are now unchanged
         assert "exposureseconds" in result
         assert result["exposureseconds"] == "60.00"
 
@@ -279,7 +269,7 @@ class TestNormalizeHeaders:
             "INSTRUME": "Camera1",
         }
         result = normalize_headers(headers)
-        assert result["filter"] == "H"
+        assert result["filter"] == "Ha"  # Filter names are now unchanged
         assert result["exposureseconds"] == "120.50"
         assert result["temp"] == "25.00"
         assert result["optic"] == "Refractor"
