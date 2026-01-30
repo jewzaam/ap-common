@@ -174,19 +174,21 @@ def enrich_metadata(
             # we can do no more, treat datum as if it were enriched.
             enriched = datum
 
+        # Build profile and add to enriched data
+        if all(key in enriched and enriched[key] is not None for key in ["optic", "focal_ratio", "camera"]):
+            enriched["profile"] = (
+                f"{enriched['optic']}@f{enriched['focal_ratio']}+{enriched['camera']}"
+            )
+        else:
+            enriched["profile"] = None
+
         if (
             printStatus
             and "targetname" in enriched
             and last_targetname != enriched["targetname"]
         ):
             last_targetname = enriched["targetname"]
-            # Build profilename if all required keys exist, otherwise use "profile unknown"
-            if all(key in enriched and enriched[key] is not None for key in ["optic", "focal_ratio", "camera"]):
-                profilename = (
-                    f"{enriched['optic']}@f{enriched['focal_ratio']}+{enriched['camera']}"
-                )
-            else:
-                profilename = "profile unknown"
+            profilename = enriched["profile"] if enriched["profile"] else "profile unknown"
             if last_profilename is not None:
                 # we have already printed something, so we need a newline for the next target.
                 print("")

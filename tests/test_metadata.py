@@ -317,6 +317,8 @@ class TestEnrichMetadata:
 
         assert result["file1.fits"]["type"] == "LIGHT"
         assert result["file1.fits"]["targetname"] == "M42"
+        # Profile should be None when keys are missing
+        assert result["file1.fits"]["profile"] is None
 
     @patch("ap_common.metadata.get_fits_headers")
     def test_enrich_with_partial_profile_keys_and_print_status(self, mock_get_fits):
@@ -341,6 +343,8 @@ class TestEnrichMetadata:
 
         assert result["file1.fits"]["optic"] == "Refractor"
         assert result["file1.fits"]["camera"] == "Camera1"
+        # Profile should be None when focal_ratio is missing
+        assert result["file1.fits"]["profile"] is None
 
     @patch("ap_common.metadata.get_fits_headers")
     def test_enrich_with_null_profile_keys_and_print_status(self, mock_get_fits):
@@ -364,6 +368,30 @@ class TestEnrichMetadata:
         )
 
         assert result["file1.fits"]["focal_ratio"] is None
+        # Profile should be None when focal_ratio is None
+        assert result["file1.fits"]["profile"] is None
+
+    @patch("ap_common.metadata.get_fits_headers")
+    def test_enrich_with_all_profile_keys_sets_profile(self, mock_get_fits):
+        """Test that profile is correctly set when all keys are present."""
+        mock_get_fits.return_value = {
+            "type": "LIGHT",
+            "targetname": "M42",
+            "optic": "Refractor",
+            "focal_ratio": "5.6",
+            "camera": "Camera1",
+        }
+
+        data = {"file1.fits": {"filename": "file1.fits", "type": None}}
+
+        result = enrich_metadata(
+            data,
+            profileFromPath=False,
+            required_properties=["type"],
+        )
+
+        # Profile should be constructed correctly
+        assert result["file1.fits"]["profile"] == "Refractor@f5.6+Camera1"
 
 
 class TestGetFilteredMetadata:
