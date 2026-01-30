@@ -125,9 +125,12 @@ def get_fits_headers(
     output = {}
 
     if file_naming_override:
+        # Don't normalize yet - use raw keys so filename headers properly
+        # override FITS headers with the same raw keys during merge.
+        # Normalization happens at the end after all headers are collected.
         file_output = get_file_headers(
             filename,
-            normalize=normalize,
+            normalize=False,
             profileFromPath=profileFromPath,
             directory_accept=directory_accept,
         )

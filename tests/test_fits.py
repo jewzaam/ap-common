@@ -184,6 +184,33 @@ class TestGetFitsHeaders:
         assert isinstance(result["EXPOSURE"], str)
         assert isinstance(result["COUNT"], str)
 
+    @patch("ap_common.fits.fits")
+    def test_fits_filename_override_takes_precedence(self, mock_fits):
+        """Test that filename-parsed values override FITS file header values.
+
+        Bug fix test for https://github.com/jewzaam/ap-common/issues/15
+        A file named masterDark_EXPOSURE_100.00_...fits should use the exposure
+        value from the filename (100), not the value from the FITS header (300).
+        """
+        # FITS file contains EXPOSURE of 300 in its header
+        mock_header = {"FILTER": "Ha", "EXPOSURE": "300"}
+        mock_hdu = Mock()
+        mock_hdu.header = mock_header
+        mock_file = MagicMock()
+        mock_file.__enter__ = Mock(return_value=[mock_hdu])
+        mock_file.__exit__ = Mock(return_value=None)
+        mock_fits.open.return_value = mock_file
+
+        # Filename indicates EXPOSURE of 100
+        filename = "/path/masterDark_EXPOSURE_100.00_file.fits"
+        result = get_fits_headers(
+            filename, profileFromPath=False, file_naming_override=True, normalize=True
+        )
+
+        # Filename value (100) should take precedence over file header value (300)
+        assert "exposureseconds" in result
+        assert result["exposureseconds"] == "100.00"
+
 
 class TestGetXisfHeaders:
     """Tests for get_xisf_headers function."""
