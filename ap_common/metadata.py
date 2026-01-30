@@ -180,15 +180,17 @@ def enrich_metadata(
             and last_targetname != enriched["targetname"]
         ):
             last_targetname = enriched["targetname"]
-            profilename = (
-                f"{enriched['optic']}@f{enriched['focal_ratio']}+{enriched['camera']}"
-            )
-            if last_profilename is not None:
-                # we have already printed something, so we need a newline for the next target.
-                print("")
-            if profilename != last_profilename:
-                last_profilename = profilename
-                print(f"{last_profilename}...")
+            # Only build profilename if all required keys exist
+            if all(key in enriched and enriched[key] is not None for key in ["optic", "focal_ratio", "camera"]):
+                profilename = (
+                    f"{enriched['optic']}@f{enriched['focal_ratio']}+{enriched['camera']}"
+                )
+                if last_profilename is not None:
+                    # we have already printed something, so we need a newline for the next target.
+                    print("")
+                if profilename != last_profilename:
+                    last_profilename = profilename
+                    print(f"{last_profilename}...")
             print(f"\t{last_targetname}..", end=".", flush=True)
 
         last_target_count += 1
