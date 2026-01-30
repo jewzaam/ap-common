@@ -246,14 +246,54 @@ def normalize_headers(input: dict, timezone_offset_from_gmt: float = None):
     return output
 
 
+def get_normalized_key(raw_key: str) -> str:
+    """
+    Returns the normalized key name for a raw header key.
+
+    This is used to detect when two different raw keys (e.g., EXPOSURE and EXPTIME)
+    would normalize to the same key (e.g., exposureseconds), which helps prevent
+    duplicate/conflicting values during header merging.
+
+    Args:
+        raw_key: The raw header key (e.g., "EXPOSURE", "EXPTIME", "FILTER")
+
+    Returns:
+        The normalized key name (e.g., "exposureseconds", "filter") or the
+        lowercase version of the key if not found in normalization data.
+    """
+    if raw_key in FILTER_NORMALIZATION_DATA:
+        # Return the first (and typically only) normalized key for this raw key
+        return list(FILTER_NORMALIZATION_DATA[raw_key].keys())[0]
+    else:
+        # Keys not in normalization data are simply lowercased
+        return raw_key.lower()
+
+
+def get_normalized_keys_set(headers: dict) -> set:
+    """
+    Returns a set of normalized key names from a dictionary of raw headers.
+
+    This is used to quickly check if adding a new raw key would create a conflict
+    with existing headers after normalization (e.g., if headers already has EXPOSURE,
+    adding EXPTIME would conflict since both normalize to exposureseconds).
+
+    Args:
+        headers: Dictionary of raw headers
+
+    Returns:
+        Set of normalized key names
+    """
+    return {get_normalized_key(k) for k in headers.keys()}
+
+
 def denormalize_header(header: str):
     """
     Converts a normalized header name back to its original FITS header form if possible.
+    Uses get_normalized_key() internally for consistent key mapping.
     """
-    for dheader in FILTER_NORMALIZATION_DATA.keys():
-        nheader = list(FILTER_NORMALIZATION_DATA[dheader].keys())[0]
-        if header == nheader:
-            return dheader
+    for raw_key in FILTER_NORMALIZATION_DATA.keys():
+        if get_normalized_key(raw_key) == header:
+            return raw_key
 
     # didn't find it..
     return None

@@ -211,6 +211,34 @@ class TestGetFitsHeaders:
         assert "exposureseconds" in result
         assert result["exposureseconds"] == "100.00"
 
+    @patch("ap_common.fits.fits")
+    def test_fits_filename_override_with_different_raw_keys(self, mock_fits):
+        """Test that filename-parsed values override FITS values with different raw keys.
+
+        Root cause test for https://github.com/jewzaam/ap-common/issues/15
+        When filename uses EXPOSURE and FITS header uses EXPTIME (different raw keys
+        that both normalize to exposureseconds), the filename value should win.
+        """
+        # FITS file contains EXPTIME (not EXPOSURE) of 300 in its header
+        mock_header = {"FILTER": "Ha", "EXPTIME": "300"}
+        mock_hdu = Mock()
+        mock_hdu.header = mock_header
+        mock_file = MagicMock()
+        mock_file.__enter__ = Mock(return_value=[mock_hdu])
+        mock_file.__exit__ = Mock(return_value=None)
+        mock_fits.open.return_value = mock_file
+
+        # Filename indicates EXPOSURE of 100 (different raw key than EXPTIME)
+        filename = "/path/masterDark_EXPOSURE_100.00_file.fits"
+        result = get_fits_headers(
+            filename, profileFromPath=False, file_naming_override=True, normalize=True
+        )
+
+        # Filename value (100) should take precedence over file header value (300)
+        # even though they use different raw keys (EXPOSURE vs EXPTIME)
+        assert "exposureseconds" in result
+        assert result["exposureseconds"] == "100.00"
+
 
 class TestGetXisfHeaders:
     """Tests for get_xisf_headers function."""
@@ -342,5 +370,37 @@ class TestGetXisfHeaders:
         )
 
         # Filename value (100) should take precedence over file header value (300)
+        assert "exposureseconds" in result
+        assert result["exposureseconds"] == "100.00"
+
+    @patch("ap_common.fits.xisf")
+    def test_xisf_filename_override_with_different_raw_keys(self, mock_xisf):
+        """Test that filename-parsed values override XISF values with different raw keys.
+
+        Root cause test for https://github.com/jewzaam/ap-common/issues/15
+        When filename uses EXPOSURE and XISF header uses EXPTIME (different raw keys
+        that both normalize to exposureseconds), the filename value should win.
+        """
+        # XISF file contains EXPTIME (not EXPOSURE) of 300 in its header
+        mock_metadata = [
+            {
+                "FITSKeywords": {
+                    "FILTER": [{"value": "Ha"}],
+                    "EXPTIME": [{"value": "300"}],
+                }
+            }
+        ]
+        mock_xisf_file = Mock()
+        mock_xisf_file.get_images_metadata.return_value = mock_metadata
+        mock_xisf.XISF.return_value = mock_xisf_file
+
+        # Filename indicates EXPOSURE of 100 (different raw key than EXPTIME)
+        filename = "/path/masterDark_EXPOSURE_100.00_file.xisf"
+        result = get_xisf_headers(
+            filename, profileFromPath=False, file_naming_override=True, normalize=True
+        )
+
+        # Filename value (100) should take precedence over file header value (300)
+        # even though they use different raw keys (EXPOSURE vs EXPTIME)
         assert "exposureseconds" in result
         assert result["exposureseconds"] == "100.00"

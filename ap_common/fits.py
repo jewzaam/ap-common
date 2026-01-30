@@ -8,7 +8,11 @@ import os
 import re
 import xisf
 from astropy.io import fits
-from ap_common.normalization import normalize_headers
+from ap_common.normalization import (
+    normalize_headers,
+    get_normalized_key,
+    get_normalized_keys_set,
+)
 from ap_common.utils import replace_env_vars
 
 
@@ -124,6 +128,11 @@ def get_fits_headers(
     file_output = {}
     output = {}
 
+    # Build a set of normalized keys from filename headers to detect conflicts
+    # with FITS headers that use different raw keys but normalize to the same key
+    # (e.g., filename has EXPOSURE but FITS has EXPTIME - both normalize to exposureseconds)
+    normalized_keys_from_filename = set()
+
     if file_naming_override:
         # Don't normalize yet - use raw keys so filename headers properly
         # override FITS headers with the same raw keys during merge.
@@ -134,6 +143,8 @@ def get_fits_headers(
             profileFromPath=profileFromPath,
             directory_accept=directory_accept,
         )
+        # Build set of normalized keys to detect conflicts
+        normalized_keys_from_filename = get_normalized_keys_set(file_output)
 
     with fits.open(filename) as fits_file:
         # get all headers (key/value) as dict from primary image
@@ -142,6 +153,15 @@ def get_fits_headers(
     for k in output:
         if output[k] is not None and not isinstance(output[k], str):
             output[k] = str(output[k])
+
+    # Filter out FITS headers whose normalized form would conflict with filename headers
+    # (e.g., remove EXPTIME if filename has EXPOSURE, since both → exposureseconds)
+    if normalized_keys_from_filename:
+        output = {
+            k: v
+            for k, v in output.items()
+            if get_normalized_key(k) not in normalized_keys_from_filename
+        }
 
     # file naming is higher priority but might be empty
     output = dict(list(output.items()) + list(file_output.items()))
@@ -171,9 +191,13 @@ def get_xisf_headers(
     """
     output = {}
 
+    # Build a set of normalized keys from filename headers to detect conflicts
+    # with XISF headers that use different raw keys but normalize to the same key
+    # (e.g., filename has EXPOSURE but XISF has EXPTIME - both normalize to exposureseconds)
+    normalized_keys_from_filename = set()
+
     if file_naming_override:
-        # Don't normalize yet - use raw keys so the "if k in output" check
-        # correctly detects duplicate keys between filename and XISF headers.
+        # Don't normalize yet - we need raw keys to properly merge with XISF headers.
         # Normalization happens at the end after all headers are collected.
         output = get_file_headers(
             filename,
@@ -181,13 +205,19 @@ def get_xisf_headers(
             profileFromPath=profileFromPath,
             directory_accept=directory_accept,
         )
+        # Build set of normalized keys to detect conflicts
+        normalized_keys_from_filename = get_normalized_keys_set(output)
 
     xisf_file = xisf.XISF(filename)
     metadata = xisf_file.get_images_metadata()
     # get all fits headers from metadata, converted to string
     for k in metadata[0]["FITSKeywords"].keys():
-        # don't overwrite any headers that already exist (only happens if loaded from filename)
+        # Skip HISTORY and keys that already exist (raw key match)
         if k in output or k == "HISTORY":
+            continue
+        # Skip keys whose normalized form would conflict with filename headers
+        # (e.g., skip EXPTIME if filename already has EXPOSURE, since both → exposureseconds)
+        if get_normalized_key(k) in normalized_keys_from_filename:
             continue
         if (
             len(metadata[0]["FITSKeywords"][k]) > 0
