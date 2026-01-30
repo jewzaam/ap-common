@@ -246,19 +246,6 @@ def normalize_headers(input: dict, timezone_offset_from_gmt: float = None):
     return output
 
 
-def denormalize_header(header: str):
-    """
-    Converts a normalized header name back to its original FITS header form if possible.
-    """
-    for dheader in FILTER_NORMALIZATION_DATA.keys():
-        nheader = list(FILTER_NORMALIZATION_DATA[dheader].keys())[0]
-        if header == nheader:
-            return dheader
-
-    # didn't find it..
-    return None
-
-
 def get_normalized_key(raw_key: str) -> str:
     """
     Returns the normalized key name for a raw header key.
@@ -297,6 +284,19 @@ def get_normalized_keys_set(headers: dict) -> set:
         Set of normalized key names
     """
     return {get_normalized_key(k) for k in headers.keys()}
+
+
+def denormalize_header(header: str):
+    """
+    Converts a normalized header name back to its original FITS header form if possible.
+    Uses get_normalized_key() internally for consistent key mapping.
+    """
+    for raw_key in FILTER_NORMALIZATION_DATA.keys():
+        if get_normalized_key(raw_key) == header:
+            return raw_key
+
+    # didn't find it..
+    return None
 
 
 def normalize_filename(
