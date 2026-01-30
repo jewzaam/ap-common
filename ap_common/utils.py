@@ -23,6 +23,7 @@ def build_profile(headers: dict) -> str:
         - No camera: "Refractor@f5.6"
         - Only optic: "Refractor"
         - Only camera: "Camera1"
+        - Only focal_ratio: None (not useful alone)
         - Nothing available: None
     """
     optic = headers.get("optic")
