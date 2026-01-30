@@ -8,7 +8,11 @@ import os
 import re
 import xisf
 from astropy.io import fits
-from ap_common.normalization import normalize_headers, get_normalized_key, get_normalized_keys_set
+from ap_common.normalization import (
+    normalize_headers,
+    get_normalized_key,
+    get_normalized_keys_set,
+)
 from ap_common.utils import replace_env_vars
 
 
@@ -154,7 +158,8 @@ def get_fits_headers(
     # (e.g., remove EXPTIME if filename has EXPOSURE, since both → exposureseconds)
     if normalized_keys_from_filename:
         output = {
-            k: v for k, v in output.items()
+            k: v
+            for k, v in output.items()
             if get_normalized_key(k) not in normalized_keys_from_filename
         }
 
