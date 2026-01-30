@@ -130,21 +130,3 @@ DEFAULT_XISF_PATTERN = r".*\.xisf$"
 DEFAULT_CR2_PATTERN = r".*\.cr2$"
 DEFAULT_IMAGE_PATTERNS = [DEFAULT_FITS_PATTERN]
 
-# =============================================================================
-# Filter Name Constants
-# =============================================================================
-
-# Filter name mappings for normalization
-FILTER_BAADER_UVIR = "BaaderUVIRCut"
-FILTER_BAADER_UVIR_SHORT = "UVIR"
-FILTER_OPTOLONG_LEXTREME = "OptolongLeXtreme"
-FILTER_OPTOLONG_LEXTREME_SHORT = "LeXtr"
-FILTER_S2 = "S2"
-FILTER_S2_SHORT = "S"
-FILTER_HA = "Ha"
-FILTER_HA_SHORT = "H"
-FILTER_O3 = "O3"
-FILTER_O3_SHORT = "O"
-FILTER_RGB = "RGB"
-FILTER_ASTRO = "Astro"
-FILTER_DUO_BAND = "Duo-Band"
