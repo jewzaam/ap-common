@@ -36,7 +36,43 @@ def _get_timezone_offset_from_gmt(timezone_offset_from_gmt: float = None) -> flo
     return timezone_offset_from_gmt
 
 
-def normalize_filterName(name: str):
+# Hardcoded -12 hours offset for middle-of-night date calculation.
+# This adjusts observation times so that observations taken before midnight
+# are grouped with the same observing "night" as those taken after midnight.
+MIDNIGHT_OFFSET_HOURS = -12.0
+
+
+def _prepare_date_string(date: str) -> str:
+    """
+    Prepares a date string for parsing by removing timezone info and fractional seconds.
+
+    This function handles various date string formats that may include:
+    - Timezone indicators (Z, +HH:MM, -HH:MM)
+    - Fractional seconds (.123456)
+
+    Args:
+        date: Date string to prepare
+
+    Returns:
+        Cleaned date string ready for parsing
+    """
+    date_str = date
+
+    # Remove timezone info if present (everything after the last 'Z' or '+'/'-')
+    if "Z" in date_str or "+" in date_str or date_str.count("-") > 2:
+        # Keep only the date and time part
+        date_str = date_str.split("Z")[0].split("+")[0].split("-", 3)[0:3]
+        if isinstance(date_str, list):
+            date_str = "-".join(date_str[:3])
+
+    # Handle fractional seconds by truncating to whole seconds
+    if "." in date_str:
+        date_str = date_str.split(".")[0]
+
+    return date_str
+
+
+def normalize_filterName(name: str) -> str:
     """
     Returns the filter name unchanged.
 
@@ -49,10 +85,10 @@ def normalize_filterName(name: str):
 
 def normalize_date(
     date: str,
-    input_format: str = None,
-    output_format: str = None,
-    timezone_offset_from_gmt: float = None,
-):
+    input_format: str | None = None,
+    output_format: str | None = None,
+    timezone_offset_from_gmt: float | None = None,
+) -> str:
     """
     Converts a date string to the standard output date format, adjusting for timezone offset.
     The timezone offset is calculated as: timezone_offset_from_gmt - 12 hours.
@@ -70,25 +106,11 @@ def normalize_date(
     output_fmt = output_format or OUTPUT_FORMAT_DATE
 
     # Get timezone offset (system default if not provided)
-    timezone_offset_from_gmt = _get_timezone_offset_from_gmt(timezone_offset_from_gmt)
+    tz_offset = _get_timezone_offset_from_gmt(timezone_offset_from_gmt)
+    total_offset_hours = tz_offset + MIDNIGHT_OFFSET_HOURS
 
-    # Hardcoded -12 hours offset for middle-of-night date calculation
-    MIDNIGHT_OFFSET_HOURS = -12.0
-    total_offset_hours = timezone_offset_from_gmt + MIDNIGHT_OFFSET_HOURS
-
-    # Handle different date string formats
-    date_str = date
-
-    # Remove timezone info if present (everything after the last 'Z' or '+'/'-')
-    if "Z" in date_str or "+" in date_str or date_str.count("-") > 2:
-        # Keep only the date and time part
-        date_str = date_str.split("Z")[0].split("+")[0].split("-", 3)[0:3]
-        if isinstance(date_str, list):
-            date_str = "-".join(date_str[:3])
-
-    # Handle fractional seconds by truncating to whole seconds
-    if "." in date_str:
-        date_str = date_str.split(".")[0]
+    # Prepare date string for parsing
+    date_str = _prepare_date_string(date)
 
     # Try to parse as datetime first, then as date-only if that fails
     try:
@@ -109,10 +131,10 @@ def normalize_date(
 
 def normalize_datetime(
     date: str,
-    input_format: str = None,
-    output_format: str = None,
-    timezone_offset_from_gmt: float = None,
-):
+    input_format: str | None = None,
+    output_format: str | None = None,
+    timezone_offset_from_gmt: float | None = None,
+) -> str:
     """
     Converts a date string to the standard output datetime format.
     The timezone offset is calculated as: timezone_offset_from_gmt - 12 hours.
@@ -130,25 +152,11 @@ def normalize_datetime(
     output_fmt = output_format or OUTPUT_FORMAT_DATETIME
 
     # Get timezone offset (system default if not provided)
-    timezone_offset_from_gmt = _get_timezone_offset_from_gmt(timezone_offset_from_gmt)
+    tz_offset = _get_timezone_offset_from_gmt(timezone_offset_from_gmt)
+    total_offset_hours = tz_offset + MIDNIGHT_OFFSET_HOURS
 
-    # Hardcoded -12 hours offset for middle-of-night date calculation
-    MIDNIGHT_OFFSET_HOURS = -12.0
-    total_offset_hours = timezone_offset_from_gmt + MIDNIGHT_OFFSET_HOURS
-
-    # Handle different date string formats
-    date_str = date
-
-    # Remove timezone info if present (everything after the last 'Z' or '+'/'-')
-    if "Z" in date_str or "+" in date_str or date_str.count("-") > 2:
-        # Keep only the date and time part
-        date_str = date_str.split("Z")[0].split("+")[0].split("-", 3)[0:3]
-        if isinstance(date_str, list):
-            date_str = "-".join(date_str[:3])
-
-    # Handle fractional seconds by truncating to whole seconds
-    if "." in date_str:
-        date_str = date_str.split(".")[0]
+    # Prepare date string for parsing
+    date_str = _prepare_date_string(date)
 
     # Try to parse as datetime first, then as date-only if that fails
     try:
@@ -168,7 +176,7 @@ def normalize_datetime(
     return datetime.strftime(adjusted_date, output_fmt)
 
 
-def normalize_target_name(input: str):
+def normalize_target_name(input: str) -> list[str]:
     """
     Splits a target name into the main target and panel if present, removing single quotes.
     Returns a list [target, panel].
@@ -186,7 +194,7 @@ def normalize_target_name(input: str):
     return [target, panel]
 
 
-def normalize_headers(input: dict, timezone_offset_from_gmt: float = None):
+def normalize_headers(input: dict, timezone_offset_from_gmt: float | None = None) -> dict:
     """
     Normalizes a dictionary of headers using FILTER_NORMALIZATION_DATA and CONSTANT_NORMALIZATION_DATA.
     Converts keys to lower case if not found in normalization data.
@@ -277,7 +285,7 @@ def get_normalized_keys_set(headers: dict) -> set:
     return {get_normalized_key(k) for k in headers.keys()}
 
 
-def denormalize_header(header: str):
+def denormalize_header(header: str) -> str | None:
     """
     Converts a normalized header name back to its original FITS header form if possible.
     Uses get_normalized_key() internally for consistent key mapping.
@@ -291,8 +299,11 @@ def denormalize_header(header: str):
 
 
 def normalize_filename(
-    output_directory: str, input_filename: str, headers: dict, statedir: str = None
-):
+    output_directory: str,
+    input_filename: str,
+    headers: dict,
+    statedir: str | None = None,
+) -> str:
     """
     Constructs a normalized filename based on output directory, input filename, headers, and state directory.
     Ensures required headers are present and builds a path with relevant metadata.

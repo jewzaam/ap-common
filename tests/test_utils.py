@@ -275,10 +275,13 @@ class TestCamelCase:
         assert camelCase("Hello World Test") == "helloWorldTest"
 
     def test_empty_string(self):
-        """Test empty string."""
-        # Empty string will cause IndexError when accessing [1:]
-        with pytest.raises(IndexError):
-            camelCase("")
+        """Test empty string returns empty string."""
+        assert camelCase("") == ""
+
+    def test_non_alphanumeric_only(self):
+        """Test string with only special characters returns empty string."""
+        assert camelCase("---") == ""
+        assert camelCase("!@#$%") == ""
 
     def test_single_character(self):
         """Test single character."""
