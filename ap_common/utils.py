@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 
-def build_profile(headers: dict) -> str:
+def build_profile(headers: dict) -> str | None:
     """
     Build a profile string from optic, focal_ratio, and camera headers.
 
@@ -48,7 +48,7 @@ def build_profile(headers: dict) -> str:
     return "+".join(parts)
 
 
-def replace_env_vars(input: str):
+def replace_env_vars(input: str | None) -> str | None:
     """
     Replaces environment variable placeholders in a string with their actual values from the OS environment.
 
@@ -73,7 +73,7 @@ def replace_env_vars(input: str):
     return output
 
 
-def resolve_path(path: str) -> str:
+def resolve_path(path: str | None) -> str | None:
     """
     Resolve a path by expanding environment variables, user home directory, and converting to absolute path.
 
@@ -104,7 +104,7 @@ def resolve_path(path: str) -> str:
 
 
 # https://stackoverflow.com/questions/8347048/how-to-convert-string-to-title-case-in-python
-def camelCase(st):
+def camelCase(st: str) -> str:
     """
     Convert a string to camelCase, removing non-alphanumeric characters and capitalizing each word except the first.
 
@@ -112,15 +112,20 @@ def camelCase(st):
         st: String to convert
 
     Returns:
-        camelCase string
+        camelCase string, or empty string if input has no alphanumeric characters
     """
     output = "".join(x for x in st.title() if x.isalnum())
+    if not output:
+        return ""
     return output[0].lower() + output[1:]
 
 
 def get_filenames(
-    dirs: list, patterns: list = None, recursive: bool = False, zips: bool = False
-):
+    dirs: list[str],
+    patterns: list[str] | None = None,
+    recursive: bool = False,
+    zips: bool = False,
+) -> list[str]:
     """
     Returns a list of filenames in the given directories matching the provided patterns.
     Supports recursive search and ZIP archive extraction.
