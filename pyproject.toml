@@ -8,10 +8,9 @@ version = "0.1.0"
 description = "Shared functionality for astrophotography tools - FITS header reading, normalization, metadata extraction, and file operations"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = {file = "LICENSE"}
 authors = [
-    {name = "Your Name"}
+    {name = "Naveen Malik"}
 ]
 keywords = ["astrophotography", "fits", "xisf", "metadata", "normalization"]
 classifiers = [
@@ -33,10 +32,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pytest-cov",
-    "black",
-    "flake8",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy",
 ]
 
 [tool.setuptools]
@@ -66,3 +66,11 @@ target-version = ["py310", "py311", "py312", "py313", "py314"]
 [tool.flake8]
 max-line-length = 88
 extend-ignore = ["E203", "E266", "E501", "W503"]
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+warn_return_any = false
+warn_unused_ignores = false
+no_implicit_optional = false
