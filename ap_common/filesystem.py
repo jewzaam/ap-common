@@ -72,7 +72,10 @@ def delete_empty_directories(
         dryrun: If True, don't actually delete directories
         printStatus: If True, show progress bar during deletion
     """
-    root_dir = replace_env_vars(root_dir)
+    resolved_root_dir = replace_env_vars(root_dir)
+    if resolved_root_dir is None:
+        raise ValueError(f"Cannot resolve root directory: {root_dir}")
+    root_dir = resolved_root_dir
     done = False
     while not done and not dryrun:
         done = True
