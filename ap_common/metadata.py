@@ -372,7 +372,7 @@ def group_by_directory(data: dict) -> dict:
         Dictionary mapping directory paths to dictionaries of {filename: metadata}
         for files in that directory
     """
-    grouped = {}
+    grouped: dict[str, dict[str, dict]] = {}
 
     for filename, metadata in data.items():
         directory = os.path.dirname(filename)

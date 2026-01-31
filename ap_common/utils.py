@@ -93,6 +93,8 @@ def resolve_path(path: str | None) -> str | None:
 
     # Step 1: Replace custom environment variables (%VARNAME% style)
     resolved = replace_env_vars(path)
+    if resolved is None:
+        return None
 
     # Step 2: Expand user home directory (~)
     resolved = os.path.expanduser(resolved)
@@ -145,7 +147,10 @@ def get_filenames(
     filenames = []
     for pattern in patterns:
         for dir in dirs:
-            dir = replace_env_vars(dir)
+            resolved_dir = replace_env_vars(dir)
+            if resolved_dir is None:
+                continue
+            dir = resolved_dir
             if not recursive:
                 for filename in os.listdir(dir):
                     filename_path = os.path.join(dir, filename)
@@ -160,7 +165,7 @@ def get_filenames(
                                 for zip_filename in (
                                     filename
                                     for filename in archive.filelist
-                                    if re.search(pattern, filename)
+                                    if re.search(pattern, filename.filename)
                                 ):
                                     # add each contained filename that matches the pattern
                                     filenames.append(
