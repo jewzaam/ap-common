@@ -113,6 +113,28 @@ class TestGetFileHeaders:
         # Should have normalized keys
         assert "filter" in result or "exposureseconds" in result
 
+    def test_date_obs_in_filename_normalized_correctly(self):
+        """Test that DATE-OBS in filename results in correct date after normalization.
+
+        Regression test for bug where "DATE-OBS_2026-01-15" in filename
+        would incorrectly set date="OBS" instead of date="2026-01-15".
+
+        The bug occurred because:
+        1. Underscore parsing extracted: DATE-OBS → 2026-01-15
+        2. Hyphen parsing then split DATE-OBS into: DATE → OBS
+        3. After normalization, the "date" key ended up with "OBS"
+        """
+        from ap_common.constants import NORMALIZED_HEADER_DATE
+
+        # This is the pattern from the bug report in ap-move-master-to-library
+        filename = "masterFlat_FILTER_B_DATE-OBS_2026-01-15_SETTEMP_-10.00.fits"
+        result = get_file_headers(filename, profileFromPath=False, normalize=True)
+
+        # The date should be correctly extracted from DATE-OBS, not incorrectly set to "OBS"
+        assert NORMALIZED_HEADER_DATE in result
+        assert result[NORMALIZED_HEADER_DATE] == "2026-01-15"
+        assert result[NORMALIZED_HEADER_DATE] != "OBS"
+
 
 class TestGetFitsHeaders:
     """Tests for get_fits_headers function."""
