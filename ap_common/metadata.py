@@ -173,10 +173,6 @@ def enrich_metadata(
             # Build profile and add to enriched data
             enriched["profile"] = build_profile(enriched)
 
-            # Update progress bar status with current target if available
-            if "targetname" in enriched and enriched["targetname"]:
-                tracker.set_status(enriched["targetname"])
-
             # store the now-enriched data
             data[filename] = enriched
 
