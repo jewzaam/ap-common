@@ -13,11 +13,11 @@ from typing import Any, Dict, Optional
 from astropy.io import fits
 from ap_common.normalization import (
     normalize_headers,
-    get_normalized_key,
     get_normalized_keys_set,
     get_all_normalized_keys,
+    FILTER_NORMALIZATION_DATA,
 )
-from ap_common.utils import replace_env_vars, resolve_path
+from ap_common.utils import resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,11 @@ def get_file_headers(
                 output[k] = v
         for x in m1:
             if "-" in x:
+                # Skip hyphen-splitting for known FITS header keywords
+                # (e.g., DATE-OBS, SET-TEMP, CCD-TEMP, OBSGEO-B, OBSGEO-L)
+                # These use hyphens as part of the key name, not as separators
+                if x.upper() in FILTER_NORMALIZATION_DATA:
+                    continue
                 m2 = re.split("[-]", x)
                 k = m2[0]
                 v = "-".join(m2[1:])
