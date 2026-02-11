@@ -216,11 +216,13 @@ def normalize_headers(
     output: dict[str, str] = {}
     for key in input.keys():
         value = input[key]
-        if value is not None and key in FILTER_NORMALIZATION_DATA.keys():
+        if key in FILTER_NORMALIZATION_DATA.keys():
             norm_data = FILTER_NORMALIZATION_DATA[key]
             for normalized_keyword in norm_data:
+                if value is None:
+                    output[normalized_keyword] = ""
                 # For date/datetime normalization, pass timezone if provided
-                if key == "DATE-OBS" and normalized_keyword in ["date", "datetime"]:
+                elif key == "DATE-OBS" and normalized_keyword in ["date", "datetime"]:
                     if normalized_keyword == "date":
                         output[normalized_keyword] = normalize_date(
                             value, timezone_offset_from_gmt=timezone_offset_from_gmt
@@ -233,8 +235,8 @@ def normalize_headers(
                     conversion_function = norm_data[normalized_keyword]
                     output[normalized_keyword] = conversion_function(value)
         else:
-            # simply convert to lower case
-            output[key.lower()] = value
+            # simply convert to lower case, normalize None to empty string
+            output[key.lower()] = "" if value is None else value
     # final special case, strip panel out of target name
     if "panel" not in output and "targetname" in output and output["targetname"]:
         x = normalize_target_name(output["targetname"])
@@ -250,6 +252,14 @@ def normalize_headers(
                     cvalue = const_values[ckey]
                     if ckey not in output:
                         output[ckey] = cvalue
+
+    # Normalize None values to empty string for consistent strict matching
+    # This ensures all downstream code (grouping, matching, filtering) gets
+    # clean data without needing to handle None separately
+    for key in output.keys():
+        if output[key] is None:
+            output[key] = ""
+
     return output
 
 
