@@ -277,6 +277,69 @@ class TestNormalizeHeaders:
         assert result["optic"] == "Refractor"
         assert result["camera"] == "Camera1"
 
+    def test_none_values_normalized_to_empty_string(self):
+        """Test that None values are normalized to empty string."""
+        headers = {
+            "FILTER": None,  # None value
+            "EXPOSURE": "60.0",
+            "INSTRUME": None,  # None value
+        }
+        result = normalize_headers(headers)
+        # None values should be converted to empty string
+        assert result["filter"] == ""
+        assert result["camera"] == ""
+        # Non-None values should be preserved
+        assert result["exposureseconds"] == "60.00"
+
+    def test_none_in_unknown_headers_normalized(self):
+        """Test that None values in unknown headers are normalized to empty string."""
+        headers = {
+            "UNKNOWN_HEADER": None,  # Unknown header with None value
+            "ANOTHER_HEADER": "value",
+        }
+        result = normalize_headers(headers)
+        # None value should be converted to empty string even for unknown headers
+        assert result["unknown_header"] == ""
+        assert result["another_header"] == "value"
+
+    def test_multiple_none_values_normalized(self):
+        """Test that multiple None values are all normalized to empty string."""
+        headers = {
+            "FILTER": None,
+            "GAIN": None,
+            "OFFSET": None,
+            "EXPOSURE": "120.0",
+        }
+        result = normalize_headers(headers)
+        # All None values should be empty strings
+        assert result["filter"] == ""
+        assert result["gain"] == ""
+        assert result["offset"] == ""
+        # Non-None values preserved
+        assert result["exposureseconds"] == "120.00"
+
+    def test_none_normalization_for_strict_matching(self):
+        """Test that None normalization enables strict matching behavior.
+
+        This verifies the fix for inconsistent None/empty filter handling where:
+        - Before: None values caused permissive matching or were removed from criteria
+        - After: None values normalized to "" for consistent strict matching
+        """
+        headers = {
+            "FILTER": None,  # Light with no filter
+            "INSTRUME": "ASI2600MM",
+            "EXPOSURE": "300.0",
+        }
+        result = normalize_headers(headers)
+
+        # After normalization, filter should be empty string (not None)
+        assert "filter" in result
+        assert result["filter"] == ""
+        assert result["filter"] is not None
+
+        # This enables strict matching: filter="" only matches filter=""
+        # (not wildcarding to match filter="Ha", filter="OIII", etc.)
+
 
 class TestDenormalizeHeader:
     """Tests for denormalize_header function."""
