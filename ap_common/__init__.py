@@ -33,6 +33,11 @@ from ap_common.metadata import (
 from ap_common.utils import replace_env_vars, resolve_path, camelCase, get_filenames
 from ap_common.progress import progress_iter, ProgressTracker
 from ap_common.logging_config import setup_logging, get_logger
+from ap_common.calibration import (
+    find_matching_darks,
+    find_matching_flats,
+    find_matching_bias,
+)
 from ap_common.constants import (
     # Directory constants
     DIRECTORY_ACCEPT,
@@ -136,6 +141,10 @@ __all__ = [
     # Logging functions
     "setup_logging",
     "get_logger",
+    # Calibration functions
+    "find_matching_darks",
+    "find_matching_flats",
+    "find_matching_bias",
     # Directory constants
     "DIRECTORY_ACCEPT",
     # FITS Header constants
