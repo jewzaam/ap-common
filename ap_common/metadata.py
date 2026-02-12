@@ -196,6 +196,47 @@ def enrich_metadata(
     return data
 
 
+def build_normalized_filters(
+    metadata: dict, headers: list, overrides: dict = None
+) -> dict:
+    """Build filters dict from normalized metadata, removing None values.
+
+    Extracts specified normalized headers from metadata and removes None values
+    for use with get_filtered_metadata/filter_metadata. Different cameras have
+    different metadata (DSLRs: ISO not gain, no offset/readoutmode).
+
+    Values are converted to strings and whitespace is stripped to handle FITS
+    header whitespace variations.
+
+    Args:
+        metadata: Source metadata dict (with normalized header keys)
+        headers: List of normalized header keys to extract
+        overrides: Optional key/value pairs to add/override (e.g., type)
+
+    Returns:
+        Filters dict with only non-None values, stripped of whitespace
+
+    Example:
+        >>> from ap_common.constants import NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN
+        >>> metadata = {NORMALIZED_HEADER_CAMERA: "ASI2600MM  ", NORMALIZED_HEADER_GAIN: None}
+        >>> build_normalized_filters(metadata, [NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN])
+        {'camera': 'ASI2600MM'}
+    """
+    # Build initial filters from metadata, stripping whitespace
+    # FITS headers can contain trailing whitespace - normalize for matching
+    filters = {}
+    for header in headers:
+        value = metadata.get(header)
+        if value is not None:
+            filters[header] = str(value).strip()
+
+    # Apply overrides (e.g., setting type to specific value)
+    if overrides:
+        filters.update(overrides)
+
+    return filters
+
+
 def filter_metadata(data: dict, filters: dict, debug: bool = False):
     """
     Filters a metadata dictionary based on provided filter key/value pairs or functions.
@@ -280,7 +321,8 @@ def filter_metadata(data: dict, filters: dict, debug: bool = False):
 
             else:
                 # default, treat as string
-                if str(datum[filter_key]) != filter_value:
+                # Strip whitespace from both sides for FITS header compatibility
+                if str(datum[filter_key]).strip() != str(filter_value).strip():
                     # not a match
                     is_match = False
                     break
