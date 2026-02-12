@@ -11,6 +11,7 @@ from ap_common.metadata import (
     enrich_metadata,
     get_filtered_metadata,
     filter_metadata,
+    build_normalized_filters,
 )
 
 
@@ -120,6 +121,31 @@ class TestFilterMetadata:
 
         with pytest.raises(Exception, match="has no value"):
             filter_metadata(data, filters)
+
+    def test_handles_whitespace(self):
+        """Test that filter_metadata matches despite whitespace."""
+        data = {
+            "file1.fits": {"camera": "ASI2600MM  "},  # trailing space
+            "file2.fits": {"camera": "Canon EOS"},  # no space
+        }
+        filters = {"camera": "ASI2600MM"}  # no space
+
+        result = filter_metadata(data, filters)
+
+        assert len(result) == 1
+        assert "file1.fits" in result
+
+    def test_handles_whitespace_both_sides(self):
+        """Test whitespace stripped from both filter and data."""
+        data = {
+            "file1.fits": {"camera": "  ASI2600MM  "},  # both sides
+        }
+        filters = {"camera": "  ASI2600MM  "}  # both sides
+
+        result = filter_metadata(data, filters)
+
+        assert len(result) == 1
+        assert "file1.fits" in result
 
 
 class TestGetMetadata:
@@ -567,3 +593,185 @@ class TestGetDirectoriesWithLights:
 
         assert len(result) == 1
         assert "/path/dir2" in result
+
+
+class TestBuildNormalizedFilters:
+    """Tests for build_normalized_filters function."""
+
+    def test_basic_extraction(self):
+        """Test basic extraction with all non-None values."""
+        from ap_common.constants import NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN
+
+        metadata = {
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: "100",
+        }
+        headers = [NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN]
+
+        result = build_normalized_filters(metadata, headers)
+
+        assert len(result) == 2
+        assert result[NORMALIZED_HEADER_CAMERA] == "ASI2600MM"
+        assert result[NORMALIZED_HEADER_GAIN] == "100"
+
+    def test_filters_out_none_values(self):
+        """Test that None values are filtered out."""
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+        )
+
+        metadata = {
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: None,  # Should be filtered out
+            NORMALIZED_HEADER_OFFSET: "50",
+        }
+        headers = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+        ]
+
+        result = build_normalized_filters(metadata, headers)
+
+        assert len(result) == 2
+        assert result[NORMALIZED_HEADER_CAMERA] == "ASI2600MM"
+        assert result[NORMALIZED_HEADER_OFFSET] == "50"
+        assert NORMALIZED_HEADER_GAIN not in result
+
+    def test_all_none_values(self):
+        """Test when all values are None."""
+        from ap_common.constants import NORMALIZED_HEADER_GAIN, NORMALIZED_HEADER_OFFSET
+
+        metadata = {
+            NORMALIZED_HEADER_GAIN: None,
+            NORMALIZED_HEADER_OFFSET: None,
+        }
+        headers = [NORMALIZED_HEADER_GAIN, NORMALIZED_HEADER_OFFSET]
+
+        result = build_normalized_filters(metadata, headers)
+
+        assert len(result) == 0
+
+    def test_missing_headers(self):
+        """Test headers not present in metadata (get returns None)."""
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+        )
+
+        metadata = {NORMALIZED_HEADER_CAMERA: "ASI2600MM"}
+        headers = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,  # Not in metadata
+        ]
+
+        result = build_normalized_filters(metadata, headers)
+
+        # Only camera should be present
+        assert len(result) == 1
+        assert result[NORMALIZED_HEADER_CAMERA] == "ASI2600MM"
+        assert NORMALIZED_HEADER_GAIN not in result
+
+    def test_with_overrides(self):
+        """Test with override values."""
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_TYPE,
+            TYPE_MASTER_DARK,
+        )
+
+        metadata = {NORMALIZED_HEADER_CAMERA: "ASI2600MM"}
+        headers = [NORMALIZED_HEADER_CAMERA]
+        overrides = {NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK}
+
+        result = build_normalized_filters(metadata, headers, overrides)
+
+        assert len(result) == 2
+        assert result[NORMALIZED_HEADER_CAMERA] == "ASI2600MM"
+        assert result[NORMALIZED_HEADER_TYPE] == TYPE_MASTER_DARK
+
+    def test_overrides_can_replace_values(self):
+        """Test that overrides can replace extracted values."""
+        from ap_common.constants import NORMALIZED_HEADER_CAMERA
+
+        metadata = {NORMALIZED_HEADER_CAMERA: "ASI2600MM"}
+        headers = [NORMALIZED_HEADER_CAMERA]
+        overrides = {NORMALIZED_HEADER_CAMERA: "Canon EOS"}
+
+        result = build_normalized_filters(metadata, headers, overrides)
+
+        assert len(result) == 1
+        assert result[NORMALIZED_HEADER_CAMERA] == "Canon EOS"
+
+    def test_empty_headers_list(self):
+        """Test with empty headers list."""
+        from ap_common.constants import NORMALIZED_HEADER_CAMERA
+
+        metadata = {NORMALIZED_HEADER_CAMERA: "ASI2600MM"}
+        headers = []
+
+        result = build_normalized_filters(metadata, headers)
+
+        assert len(result) == 0
+
+    def test_empty_headers_with_overrides(self):
+        """Test empty headers but with overrides."""
+        from ap_common.constants import NORMALIZED_HEADER_TYPE, TYPE_MASTER_FLAT
+
+        metadata = {}
+        headers = []
+        overrides = {NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT}
+
+        result = build_normalized_filters(metadata, headers, overrides)
+
+        assert len(result) == 1
+        assert result[NORMALIZED_HEADER_TYPE] == TYPE_MASTER_FLAT
+
+    def test_dslr_camera_metadata(self):
+        """Test with DSLR camera metadata (many None values)."""
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_READOUTMODE,
+            NORMALIZED_HEADER_SETTEMP,
+        )
+
+        # DSLR metadata - no gain, offset, readoutmode, settemp
+        metadata = {
+            NORMALIZED_HEADER_CAMERA: "Canon EOS",
+            NORMALIZED_HEADER_GAIN: None,
+            NORMALIZED_HEADER_OFFSET: None,
+            NORMALIZED_HEADER_READOUTMODE: None,
+            NORMALIZED_HEADER_SETTEMP: None,
+        }
+        headers = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_READOUTMODE,
+            NORMALIZED_HEADER_SETTEMP,
+        ]
+
+        result = build_normalized_filters(metadata, headers)
+
+        # Only camera should be present
+        assert len(result) == 1
+        assert result[NORMALIZED_HEADER_CAMERA] == "Canon EOS"
+
+    def test_strips_whitespace(self):
+        """Test that whitespace is stripped from values."""
+        from ap_common.constants import NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN
+
+        metadata = {
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM  ",  # trailing spaces
+            NORMALIZED_HEADER_GAIN: "  100  ",  # leading and trailing
+        }
+        headers = [NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN]
+
+        result = build_normalized_filters(metadata, headers)
+
+        assert result[NORMALIZED_HEADER_CAMERA] == "ASI2600MM"
+        assert result[NORMALIZED_HEADER_GAIN] == "100"
