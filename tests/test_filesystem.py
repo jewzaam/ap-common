@@ -109,8 +109,12 @@ class TestMoveFile:
         assert not dest.exists()
         assert source.exists()  # Source should still exist in dry run
 
-    def test_move_debug_output(self, tmp_path, capsys):
-        """Test that debug mode prints output."""
+    def test_move_debug_output(self, tmp_path, caplog):
+        """Test that debug mode logs output."""
+        import logging
+
+        caplog.set_level(logging.DEBUG)
+
         source = tmp_path / "source.txt"
         dest = tmp_path / "dest.txt"
         source.write_text("test content")
@@ -118,12 +122,12 @@ class TestMoveFile:
         try:
             move_file(str(source), str(dest), debug=True)
         except PermissionError:
-            # Deletion may fail in sandbox, but debug output should still be printed
+            # Deletion may fail in sandbox, but debug output should still be logged
             pass
 
-        captured = capsys.readouterr()
-        assert "DEBUG" in captured.out
-        assert "copy_file" in captured.out or "move_file" in captured.out
+        # Check that debug messages were logged
+        assert any("copy_file" in record.message for record in caplog.records)
+        assert any("move_file" in record.message for record in caplog.records)
 
 
 class TestDeleteEmptyDirectories:
