@@ -35,6 +35,7 @@ def progress_iter(
     unit: str = "files",
     enabled: bool = True,
     total: int = None,
+    desc_width: int | None = None,
 ):
     """
     Wrap an iterable with a progress bar.
@@ -48,6 +49,7 @@ def progress_iter(
         unit: Unit name shown in progress stats (e.g., "files", "dirs")
         enabled: Whether to show progress (False = passthrough)
         total: Total count if known (auto-detected for sequences)
+        desc_width: Width to pad description to (default: use ProgressTracker class default)
 
     Returns:
         Iterator that yields items from the iterable
@@ -58,6 +60,14 @@ def progress_iter(
     """
     if not enabled:
         return iterable
+
+    # Apply description width padding (instance param overrides class default)
+    # Access ProgressTracker's class default (defined later in this module)
+    width = (
+        desc_width if desc_width is not None else ProgressTracker._default_desc_width
+    )
+    if width is not None:
+        desc = desc.ljust(width)
 
     return tqdm(iterable, desc=desc, unit=unit, total=total)
 
