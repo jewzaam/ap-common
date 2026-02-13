@@ -140,5 +140,11 @@ FILE_EXTENSION_CR2 = ".cr2"
 DEFAULT_FITS_PATTERN = r".*\.fits$"
 DEFAULT_XISF_PATTERN = r".*\.xisf$"
 DEFAULT_CR2_PATTERN = r".*\.cr2$"
+# All supported image types (light frames and calibration)
+DEFAULT_IMAGE_PATTERNS = [
+    DEFAULT_FITS_PATTERN,
+    DEFAULT_XISF_PATTERN,
+    DEFAULT_CR2_PATTERN,
+]
 # Master calibration frames (never CR2)
 DEFAULT_CALIBRATION_PATTERNS = [DEFAULT_FITS_PATTERN, DEFAULT_XISF_PATTERN]

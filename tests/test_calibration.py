@@ -10,6 +10,9 @@ from ap_common.calibration import (
     find_matching_darks,
     find_matching_flats,
     find_matching_bias,
+    find_matching_darks_from_cache,
+    find_matching_flats_from_cache,
+    find_matching_bias_from_cache,
 )
 from ap_common.constants import (
     NORMALIZED_HEADER_TYPE,
@@ -30,19 +33,23 @@ from ap_common.constants import (
 class TestFindMatchingDarks:
     """Tests for find_matching_darks function."""
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_exact_exposure_match(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_exact_exposure_match(self, mock_get_metadata):
         """Test finding darks with exact exposure match."""
         # Setup mock
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/dark1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
                 NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_GAIN: "100",
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             },
             "/path/dark2.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/dark2.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
                 NORMALIZED_HEADER_EXPOSURESECONDS: "120.0",
+                NORMALIZED_HEADER_GAIN: "100",
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             },
         }
@@ -65,19 +72,23 @@ class TestFindMatchingDarks:
         assert result[0][NORMALIZED_HEADER_EXPOSURESECONDS] == "60.0"
         assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/dark1.fits"
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_shorter_exposure_allowed(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_shorter_exposure_allowed(self, mock_get_metadata):
         """Test finding darks with shorter exposure when allowed."""
         # Setup mock
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/dark1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
                 NORMALIZED_HEADER_EXPOSURESECONDS: "30.0",
+                NORMALIZED_HEADER_GAIN: "100",
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             },
             "/path/dark2.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/dark2.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
                 NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_GAIN: "100",
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             },
         }
@@ -101,14 +112,16 @@ class TestFindMatchingDarks:
         assert result[0][NORMALIZED_HEADER_EXPOSURESECONDS] == "60.0"
         assert result[1][NORMALIZED_HEADER_EXPOSURESECONDS] == "30.0"
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_shorter_exposure_not_allowed(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_shorter_exposure_not_allowed(self, mock_get_metadata):
         """Test rejecting shorter exposure darks when not allowed."""
         # Setup mock
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/dark1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
                 NORMALIZED_HEADER_EXPOSURESECONDS: "30.0",
+                NORMALIZED_HEADER_GAIN: "100",
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             },
         }
@@ -130,10 +143,10 @@ class TestFindMatchingDarks:
         # Should reject shorter dark when not allowed
         assert len(result) == 0
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_no_matches(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_no_matches(self, mock_get_metadata):
         """Test when no darks match."""
-        mock_get_filtered.return_value = {}
+        mock_get_metadata.return_value = {}
 
         reference = {
             NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
@@ -150,14 +163,16 @@ class TestFindMatchingDarks:
 
         assert len(result) == 0
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_longer_exposure_rejected(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_longer_exposure_rejected(self, mock_get_metadata):
         """Test that longer exposure darks are rejected."""
         # Setup mock
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/dark1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
                 NORMALIZED_HEADER_EXPOSURESECONDS: "180.0",
+                NORMALIZED_HEADER_GAIN: "100",
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             },
         }
@@ -179,10 +194,10 @@ class TestFindMatchingDarks:
         # Longer exposure dark should always be rejected
         assert len(result) == 0
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_recursive_vs_nonrecursive(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_recursive_vs_nonrecursive(self, mock_get_metadata):
         """Test that recursive parameter is passed correctly."""
-        mock_get_filtered.return_value = {}
+        mock_get_metadata.return_value = {}
 
         reference = {
             NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
@@ -199,7 +214,7 @@ class TestFindMatchingDarks:
         )
 
         # Check that get_filtered_metadata was called with recursive=True
-        call_args = mock_get_filtered.call_args
+        call_args = mock_get_metadata.call_args
         assert call_args[1]["recursive"] is True
 
         # Test recursive=False
@@ -212,21 +227,23 @@ class TestFindMatchingDarks:
         )
 
         # Check that get_filtered_metadata was called with recursive=False
-        call_args = mock_get_filtered.call_args
+        call_args = mock_get_metadata.call_args
         assert call_args[1]["recursive"] is False
 
 
 class TestFindMatchingFlats:
     """Tests for find_matching_flats function."""
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_basic_flat_matching(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_basic_flat_matching(self, mock_get_metadata):
         """Test basic flat matching."""
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/flat1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/flat1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
                 NORMALIZED_HEADER_FILTER: "Ha",
+                NORMALIZED_HEADER_GAIN: "100",
             },
         }
 
@@ -250,16 +267,18 @@ class TestFindMatchingFlats:
         assert len(result) == 1
         assert result[0][NORMALIZED_HEADER_FILTER] == "Ha"
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_multiple_flat_matches(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_multiple_flat_matches(self, mock_get_metadata):
         """Test finding multiple matching flats."""
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/flat1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/flat1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
                 NORMALIZED_HEADER_FILTER: "Ha",
             },
             "/path/flat2.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/flat2.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
                 NORMALIZED_HEADER_FILTER: "Ha",
             },
         }
@@ -275,10 +294,10 @@ class TestFindMatchingFlats:
 
         assert len(result) == 2
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_no_flat_matches(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_no_flat_matches(self, mock_get_metadata):
         """Test when no flats match."""
-        mock_get_filtered.return_value = {}
+        mock_get_metadata.return_value = {}
 
         reference = {NORMALIZED_HEADER_FILTER: "Ha"}
 
@@ -291,14 +310,15 @@ class TestFindMatchingFlats:
 
         assert len(result) == 0
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_flat_with_date_matching(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_flat_with_date_matching(self, mock_get_metadata):
         """Test flat matching including date field."""
         from ap_common.constants import NORMALIZED_HEADER_DATE
 
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/flat1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/flat1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
                 NORMALIZED_HEADER_FILTER: "Ha",
                 NORMALIZED_HEADER_DATE: "2024-01-15",
             },
@@ -322,14 +342,16 @@ class TestFindMatchingFlats:
 class TestFindMatchingBias:
     """Tests for find_matching_bias function."""
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_basic_bias_matching(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_basic_bias_matching(self, mock_get_metadata):
         """Test basic bias matching."""
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/bias1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/bias1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS,
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
                 NORMALIZED_HEADER_GAIN: "100",
+                NORMALIZED_HEADER_OFFSET: "10",
             },
         }
 
@@ -353,17 +375,21 @@ class TestFindMatchingBias:
         assert len(result) == 1
         assert result[0][NORMALIZED_HEADER_GAIN] == "100"
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_multiple_bias_matches(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_multiple_bias_matches(self, mock_get_metadata):
         """Test finding multiple matching bias frames."""
-        mock_get_filtered.return_value = {
+        mock_get_metadata.return_value = {
             "/path/bias1.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/bias1.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS,
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
             },
             "/path/bias2.fits": {
                 NORMALIZED_HEADER_FILENAME: "/path/bias2.fits",
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS,
                 NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
             },
         }
 
@@ -378,10 +404,10 @@ class TestFindMatchingBias:
 
         assert len(result) == 2
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_no_bias_matches(self, mock_get_filtered):
+    @patch("ap_common.calibration.get_metadata")
+    def test_no_bias_matches(self, mock_get_metadata):
         """Test when no bias frames match."""
-        mock_get_filtered.return_value = {}
+        mock_get_metadata.return_value = {}
 
         reference = {NORMALIZED_HEADER_CAMERA: "ASI2600MM"}
 
@@ -395,72 +421,183 @@ class TestFindMatchingBias:
         assert len(result) == 0
 
 
-class TestIntegration:
-    """Integration tests for calibration matching."""
+class TestCacheBasedCalibrationFunctions:
+    """Tests for *_from_cache calibration functions."""
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_type_override_for_darks(self, mock_get_filtered):
-        """Test that TYPE is correctly overridden to MASTER_DARK."""
-        mock_get_filtered.return_value = {}
+    def test_find_matching_darks_from_cache(self):
+        """Test find_matching_darks_from_cache filters darks from cache."""
+        # Create metadata dict
+        metadata_dict = {
+            "/path/dark1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
+                NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
+            },
+            "/path/dark2.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
+                NORMALIZED_HEADER_FILENAME: "/path/dark2.fits",
+                NORMALIZED_HEADER_EXPOSURESECONDS: "120.0",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
+            },
+        }
 
         reference = {
-            NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,  # This should be overridden
-            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
             NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: "100",
         }
 
-        find_matching_darks(
-            "/library",
-            reference,
-            match_fields=[NORMALIZED_HEADER_CAMERA],
-            printStatus=False,
+        # Call with cache
+        result = find_matching_darks_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN],
+            allow_shorter_exposure=False,
         )
 
-        # Check that build_normalized_filters was called and TYPE was set correctly
-        call_args = mock_get_filtered.call_args
-        filters = call_args[1]["filters"]
-        assert filters[NORMALIZED_HEADER_TYPE] == TYPE_MASTER_DARK
+        # Should find exact exposure match
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/dark1.fits"
 
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_type_override_for_flats(self, mock_get_filtered):
-        """Test that TYPE is correctly overridden to MASTER_FLAT."""
-        mock_get_filtered.return_value = {}
+    def test_find_matching_flats_from_cache(self):
+        """Test find_matching_flats_from_cache filters flats from cache."""
+        # Create metadata dict
+        metadata_dict = {
+            "/path/flat1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
+                NORMALIZED_HEADER_FILENAME: "/path/flat1.fits",
+                NORMALIZED_HEADER_FILTER: "Ha",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            },
+            "/path/flat2.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
+                NORMALIZED_HEADER_FILENAME: "/path/flat2.fits",
+                NORMALIZED_HEADER_FILTER: "OIII",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            },
+        }
 
         reference = {
-            NORMALIZED_HEADER_TYPE: "LIGHT",  # This should be overridden
             NORMALIZED_HEADER_FILTER: "Ha",
-        }
-
-        find_matching_flats(
-            "/library",
-            reference,
-            match_fields=[NORMALIZED_HEADER_FILTER],
-            printStatus=False,
-        )
-
-        # Check that TYPE was set correctly
-        call_args = mock_get_filtered.call_args
-        filters = call_args[1]["filters"]
-        assert filters[NORMALIZED_HEADER_TYPE] == TYPE_MASTER_FLAT
-
-    @patch("ap_common.calibration.get_filtered_metadata")
-    def test_type_override_for_bias(self, mock_get_filtered):
-        """Test that TYPE is correctly overridden to MASTER_BIAS."""
-        mock_get_filtered.return_value = {}
-
-        reference = {
-            NORMALIZED_HEADER_TYPE: "LIGHT",  # This should be overridden
             NORMALIZED_HEADER_CAMERA: "ASI2600MM",
         }
 
-        find_matching_bias(
-            "/library",
-            reference,
-            match_fields=[NORMALIZED_HEADER_CAMERA],
-            printStatus=False,
+        # Call with cache
+        result = find_matching_flats_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_FILTER],
         )
 
-        # Check that TYPE was set correctly
-        call_args = mock_get_filtered.call_args
-        filters = call_args[1]["filters"]
-        assert filters[NORMALIZED_HEADER_TYPE] == TYPE_MASTER_BIAS
+        # Should find Ha flat
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/flat1.fits"
+
+    def test_find_matching_bias_from_cache(self):
+        """Test find_matching_bias_from_cache filters bias from cache."""
+        # Create metadata dict
+        metadata_dict = {
+            "/path/bias1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS,
+                NORMALIZED_HEADER_FILENAME: "/path/bias1.fits",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
+            },
+            "/path/bias2.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS,
+                NORMALIZED_HEADER_FILENAME: "/path/bias2.fits",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "200",
+            },
+        }
+
+        reference = {
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: "100",
+        }
+
+        # Call with cache
+        result = find_matching_bias_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN],
+        )
+
+        # Should find gain 100 bias
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/bias1.fits"
+
+    def test_cache_functions_dont_do_disk_io(self):
+        """Test that *_from_cache functions don't do disk I/O."""
+        # Cache functions operate purely in memory
+        # They should work without any file system access
+        metadata_dict = {
+            "/path/dark1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
+                NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            },
+        }
+
+        reference = {
+            NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+        }
+
+        # Should work without disk access
+        result = find_matching_darks_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[NORMALIZED_HEADER_CAMERA],
+        )
+
+        # Should return results from cache
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/dark1.fits"
+
+    def test_cache_functions_filter_by_criteria(self):
+        """Test *_from_cache functions filter by match criteria correctly."""
+        # Create metadata dict with multiple darks
+        metadata_dict = {
+            "/path/dark1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
+                NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
+            },
+            "/path/dark2.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
+                NORMALIZED_HEADER_FILENAME: "/path/dark2.fits",
+                NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "200",  # Different gain
+            },
+            "/path/flat1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,  # Wrong type
+                NORMALIZED_HEADER_FILENAME: "/path/flat1.fits",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
+            },
+        }
+
+        reference = {
+            NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: "100",
+        }
+
+        # Call with cache
+        result = find_matching_darks_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN],
+        )
+
+        # Should find only dark1 (matches camera+gain, not dark2 or flat1)
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/dark1.fits"

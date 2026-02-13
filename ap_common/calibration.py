@@ -11,7 +11,11 @@ from typing import Dict, List, Union, Optional
 from pathlib import Path
 import logging
 
-from ap_common.metadata import get_filtered_metadata, build_normalized_filters
+from ap_common.metadata import (
+    get_metadata,
+    get_filtered_metadata,
+    build_normalized_filters,
+)
 from ap_common.constants import (
     TYPE_MASTER_DARK,
     TYPE_MASTER_FLAT,
@@ -65,71 +69,33 @@ def find_matching_darks(
         # Returns all matching darks from /blink and subdirectories
         # Paths in results show where each dark is located
     """
-    # Get light exposure for comparison
-    light_exposure = float(reference.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1))
-
-    # Build filter criteria (without exposure initially)
-    # Different cameras have different metadata (DSLRs: ISO not gain, no offset/readoutmode)
-    filter_criteria = build_normalized_filters(
-        reference,
-        match_fields,
-        overrides={NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK},
-    )
-
-    logger.debug(f"Searching for darks with criteria: {filter_criteria}")
-    logger.debug(f"Target exposure: {light_exposure}s")
-
-    # Search for all matching darks (any exposure)
+    # Load metadata from disk
     if patterns is None:
         patterns = DEFAULT_CALIBRATION_PATTERNS
 
     # IMPORTANT: profileFromPath only works with blink/data directory structure
     # For library searches, it should typically be False to read actual file headers
-    darks = get_filtered_metadata(
+    metadata_dict = get_metadata(
         dirs=[str(search_dir)],
-        filters=filter_criteria,
-        profileFromPath=profileFromPath,
         patterns=patterns,
         recursive=recursive,
+        profileFromPath=profileFromPath,
         printStatus=printStatus,
     )
 
-    if not darks:
+    if not metadata_dict:
         logger.debug(
-            f"No darks found matching criteria in {search_dir} (recursive={recursive}, patterns={patterns})"
+            f"No files found in {search_dir} (recursive={recursive}, patterns={patterns})"
         )
         return []
 
-    logger.debug(f"Found {len(darks)} darks matching criteria")
-
-    # Convert dict to list of metadata dicts
-    darks_list = list(darks.values())
-
-    # Filter by exposure logic
-    matching = []
-    for dark_meta in darks_list:
-        dark_exposure = float(dark_meta.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1))
-
-        # Accept if exact match
-        if dark_exposure == light_exposure:
-            matching.append(dark_meta)
-        # Or if shorter exposure allowed
-        elif allow_shorter_exposure and dark_exposure < light_exposure:
-            matching.append(dark_meta)
-
-    available_exposures = sorted(
-        [float(d.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1)) for d in darks_list]
+    # Delegate to cache-based function
+    return find_matching_darks_from_cache(
+        metadata_dict=metadata_dict,
+        reference=reference,
+        match_fields=match_fields,
+        allow_shorter_exposure=allow_shorter_exposure,
     )
-    logger.debug(f"Available dark exposures: {available_exposures}")
-    logger.debug(f"After exposure filtering: {len(matching)} matching darks")
-
-    # Sort by exposure (longest first)
-    matching.sort(
-        key=lambda d: float(d.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1)),
-        reverse=True,
-    )
-
-    return matching
 
 
 def find_matching_flats(
@@ -175,33 +141,30 @@ def find_matching_flats(
             recursive=False  # Just this directory
         )
     """
-    # Build filter criteria
-    # Different cameras have different metadata (DSLRs: ISO not gain, no offset/readoutmode)
-    filter_criteria = build_normalized_filters(
-        reference,
-        match_fields,
-        overrides={NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT},
-    )
-
-    logger.debug(f"Searching for flats with criteria: {filter_criteria}")
-
-    # Search for matching flats
+    # Load metadata from disk
     if patterns is None:
         patterns = DEFAULT_CALIBRATION_PATTERNS
 
-    flats = get_filtered_metadata(
+    metadata_dict = get_metadata(
         dirs=[str(search_dir)],
-        filters=filter_criteria,
-        profileFromPath=profileFromPath,
         patterns=patterns,
         recursive=recursive,
+        profileFromPath=profileFromPath,
         printStatus=printStatus,
     )
 
-    logger.debug(f"Found {len(flats)} matching flats")
+    if not metadata_dict:
+        logger.debug(
+            f"No files found in {search_dir} (recursive={recursive}, patterns={patterns})"
+        )
+        return []
 
-    # Convert dict to list of metadata dicts
-    return list(flats.values())
+    # Delegate to cache-based function
+    return find_matching_flats_from_cache(
+        metadata_dict=metadata_dict,
+        reference=reference,
+        match_fields=match_fields,
+    )
 
 
 def find_matching_bias(
@@ -239,30 +202,227 @@ def find_matching_bias(
             recursive=True
         )
     """
+    # Load metadata from disk
+    if patterns is None:
+        patterns = DEFAULT_CALIBRATION_PATTERNS
+
+    metadata_dict = get_metadata(
+        dirs=[str(search_dir)],
+        patterns=patterns,
+        recursive=recursive,
+        profileFromPath=profileFromPath,
+        printStatus=printStatus,
+    )
+
+    if not metadata_dict:
+        logger.debug(
+            f"No files found in {search_dir} (recursive={recursive}, patterns={patterns})"
+        )
+        return []
+
+    # Delegate to cache-based function
+    return find_matching_bias_from_cache(
+        metadata_dict=metadata_dict,
+        reference=reference,
+        match_fields=match_fields,
+    )
+
+
+# =============================================================================
+# Cache-based calibration matching functions
+# =============================================================================
+
+
+def find_matching_darks_from_cache(
+    metadata_dict: Dict[str, Dict[str, str]],
+    reference: Dict[str, str],
+    match_fields: List[str],
+    allow_shorter_exposure: bool = False,
+) -> List[Dict[str, str]]:
+    """
+    Find dark frames matching reference metadata from a pre-loaded metadata dict.
+
+    This function searches within a pre-loaded metadata cache instead of loading
+    from disk, making it suitable for scenarios where metadata has been loaded
+    once upfront to avoid redundant I/O.
+
+    Args:
+        metadata_dict: Pre-loaded metadata dictionary mapping filename to metadata
+        reference: Light frame metadata to match against
+        match_fields: List of metadata fields that must match exactly
+        allow_shorter_exposure: If True, accept darks with exposure < light exposure
+                                If False, only accept exact exposure match
+
+    Returns:
+        List of metadata dicts for matching darks, sorted by exposure (longest first)
+        Each dict includes NORMALIZED_HEADER_FILENAME for the file path
+
+    Example:
+        # Load all metadata once
+        metadata = get_metadata(dirs=["/blink"], recursive=True)
+
+        # Find matching darks from cache
+        from ap_common.constants import CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE
+        darks = find_matching_darks_from_cache(
+            metadata,
+            light_meta,
+            match_fields=[CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE],
+            allow_shorter_exposure=True
+        )
+    """
+    # Get light exposure for comparison
+    light_exposure = float(reference.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1))
+
     # Build filter criteria
-    # Different cameras have different metadata (DSLRs: ISO not gain, no offset/readoutmode)
+    filter_criteria = build_normalized_filters(
+        reference,
+        match_fields,
+        overrides={NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK},
+    )
+
+    logger.debug(f"Searching for darks in cache with criteria: {filter_criteria}")
+    logger.debug(f"Target exposure: {light_exposure}s")
+
+    # Filter from provided metadata dict
+    darks = {}
+    for filename, metadata in metadata_dict.items():
+        # Check if metadata matches all filter criteria
+        if all(metadata.get(k) == v for k, v in filter_criteria.items()):
+            darks[filename] = metadata
+
+    logger.debug(f"Found {len(darks)} darks matching criteria in cache")
+
+    # Convert to list
+    darks_list = list(darks.values())
+
+    # Filter by exposure logic
+    matching = []
+    for dark_meta in darks_list:
+        dark_exposure = float(dark_meta.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1))
+
+        # Accept if exact match
+        if dark_exposure == light_exposure:
+            matching.append(dark_meta)
+        # Or if shorter exposure allowed
+        elif allow_shorter_exposure and dark_exposure < light_exposure:
+            matching.append(dark_meta)
+
+    logger.debug(f"After exposure filtering: {len(matching)} matching darks")
+
+    # Sort by exposure (longest first)
+    matching.sort(
+        key=lambda d: float(d.get(NORMALIZED_HEADER_EXPOSURESECONDS, -1)),
+        reverse=True,
+    )
+
+    return matching
+
+
+def find_matching_flats_from_cache(
+    metadata_dict: Dict[str, Dict[str, str]],
+    reference: Dict[str, str],
+    match_fields: List[str],
+) -> List[Dict[str, str]]:
+    """
+    Find flat frames matching reference metadata from a pre-loaded metadata dict.
+
+    This function searches within a pre-loaded metadata cache instead of loading
+    from disk, making it suitable for scenarios where metadata has been loaded
+    once upfront to avoid redundant I/O.
+
+    Args:
+        metadata_dict: Pre-loaded metadata dictionary mapping filename to metadata
+        reference: Light frame metadata to match against
+        match_fields: List of metadata fields that must match exactly
+
+    Returns:
+        List of metadata dicts for matching flats
+        Each dict includes NORMALIZED_HEADER_FILENAME for the file path
+
+    Example:
+        # Load all metadata once
+        metadata = get_metadata(dirs=["/blink"], recursive=True)
+
+        # Find matching flats from cache
+        from ap_common.constants import CAMERA, FILTER, GAIN, OFFSET
+        flats = find_matching_flats_from_cache(
+            metadata,
+            light_meta,
+            match_fields=[CAMERA, FILTER, GAIN, OFFSET]
+        )
+    """
+    # Build filter criteria
+    filter_criteria = build_normalized_filters(
+        reference,
+        match_fields,
+        overrides={NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT},
+    )
+
+    logger.debug(f"Searching for flats in cache with criteria: {filter_criteria}")
+
+    # Filter from provided metadata dict
+    flats = {}
+    for filename, metadata in metadata_dict.items():
+        # Check if metadata matches all filter criteria
+        if all(metadata.get(k) == v for k, v in filter_criteria.items()):
+            flats[filename] = metadata
+
+    logger.debug(f"Found {len(flats)} matching flats in cache")
+
+    # Convert dict to list of metadata dicts
+    return list(flats.values())
+
+
+def find_matching_bias_from_cache(
+    metadata_dict: Dict[str, Dict[str, str]],
+    reference: Dict[str, str],
+    match_fields: List[str],
+) -> List[Dict[str, str]]:
+    """
+    Find bias frames matching reference metadata from a pre-loaded metadata dict.
+
+    This function searches within a pre-loaded metadata cache instead of loading
+    from disk, making it suitable for scenarios where metadata has been loaded
+    once upfront to avoid redundant I/O.
+
+    Args:
+        metadata_dict: Pre-loaded metadata dictionary mapping filename to metadata
+        reference: Light frame metadata to match against
+        match_fields: List of metadata fields that must match exactly
+
+    Returns:
+        List of metadata dicts for matching bias frames
+        Each dict includes NORMALIZED_HEADER_FILENAME for the file path
+
+    Example:
+        # Load all metadata once
+        metadata = get_metadata(dirs=["/library"], recursive=True)
+
+        # Find matching bias from cache
+        from ap_common.constants import CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE
+        bias_frames = find_matching_bias_from_cache(
+            metadata,
+            light_meta,
+            match_fields=[CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE]
+        )
+    """
+    # Build filter criteria
     filter_criteria = build_normalized_filters(
         reference,
         match_fields,
         overrides={NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS},
     )
 
-    logger.debug(f"Searching for bias with criteria: {filter_criteria}")
+    logger.debug(f"Searching for bias in cache with criteria: {filter_criteria}")
 
-    # Search for matching bias
-    if patterns is None:
-        patterns = DEFAULT_CALIBRATION_PATTERNS
+    # Filter from provided metadata dict
+    bias = {}
+    for filename, metadata in metadata_dict.items():
+        # Check if metadata matches all filter criteria
+        if all(metadata.get(k) == v for k, v in filter_criteria.items()):
+            bias[filename] = metadata
 
-    bias = get_filtered_metadata(
-        dirs=[str(search_dir)],
-        filters=filter_criteria,
-        profileFromPath=profileFromPath,
-        patterns=patterns,
-        recursive=recursive,
-        printStatus=printStatus,
-    )
-
-    logger.debug(f"Found {len(bias)} matching bias frames")
+    logger.debug(f"Found {len(bias)} matching bias frames in cache")
 
     # Convert dict to list of metadata dicts
     return list(bias.values())

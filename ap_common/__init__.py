@@ -37,6 +37,9 @@ from ap_common.calibration import (
     find_matching_darks,
     find_matching_flats,
     find_matching_bias,
+    find_matching_darks_from_cache,
+    find_matching_flats_from_cache,
+    find_matching_bias_from_cache,
 )
 from ap_common.constants import (
     # Directory constants
@@ -101,6 +104,7 @@ from ap_common.constants import (
     DEFAULT_FITS_PATTERN,
     DEFAULT_XISF_PATTERN,
     DEFAULT_CR2_PATTERN,
+    DEFAULT_IMAGE_PATTERNS,
     DEFAULT_CALIBRATION_PATTERNS,
 )
 
@@ -145,6 +149,9 @@ __all__ = [
     "find_matching_darks",
     "find_matching_flats",
     "find_matching_bias",
+    "find_matching_darks_from_cache",
+    "find_matching_flats_from_cache",
+    "find_matching_bias_from_cache",
     # Directory constants
     "DIRECTORY_ACCEPT",
     # FITS Header constants
@@ -207,5 +214,6 @@ __all__ = [
     "DEFAULT_FITS_PATTERN",
     "DEFAULT_XISF_PATTERN",
     "DEFAULT_CR2_PATTERN",
+    "DEFAULT_IMAGE_PATTERNS",
     "DEFAULT_CALIBRATION_PATTERNS",
 ]
