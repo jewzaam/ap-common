@@ -175,6 +175,90 @@ class TestProgressTracker:
         assert result == []
 
 
+class TestProgressTrackerDescWidth:
+    """Tests for ProgressTracker description width feature."""
+
+    def setup_method(self):
+        """Reset class default before each test."""
+        ProgressTracker.set_default_desc_width(None)
+
+    def teardown_method(self):
+        """Clean up class default after each test."""
+        ProgressTracker.set_default_desc_width(None)
+
+    def test_set_default_desc_width(self):
+        """Test that class default can be set."""
+        ProgressTracker.set_default_desc_width(20)
+        assert ProgressTracker._default_desc_width == 20
+
+    def test_clear_default_desc_width(self):
+        """Test that class default can be cleared."""
+        ProgressTracker.set_default_desc_width(20)
+        ProgressTracker.set_default_desc_width(None)
+        assert ProgressTracker._default_desc_width is None
+
+    def test_desc_width_pads_description(self):
+        """Test that desc_width pads description with spaces."""
+        tracker = ProgressTracker(desc="Short", enabled=False, desc_width=20)
+        assert tracker.desc == "Short               "
+        assert len(tracker.desc) == 20
+
+    def test_desc_width_no_truncation(self):
+        """Test that desc_width doesn't truncate longer descriptions."""
+        tracker = ProgressTracker(
+            desc="Very long description", enabled=False, desc_width=10
+        )
+        # ljust() doesn't truncate, just returns original if longer
+        assert tracker.desc == "Very long description"
+
+    def test_default_desc_width_applies(self):
+        """Test that class default is used when no instance width provided."""
+        ProgressTracker.set_default_desc_width(20)
+        tracker = ProgressTracker(desc="Test", enabled=False)
+        assert tracker.desc == "Test                "
+        assert len(tracker.desc) == 20
+
+    def test_instance_width_overrides_default(self):
+        """Test that instance desc_width overrides class default."""
+        ProgressTracker.set_default_desc_width(20)
+        tracker = ProgressTracker(desc="Test", enabled=False, desc_width=15)
+        assert tracker.desc == "Test           "
+        assert len(tracker.desc) == 15
+
+    def test_no_padding_without_width(self):
+        """Test that no padding occurs when width is not set."""
+        tracker = ProgressTracker(desc="Test", enabled=False)
+        assert tracker.desc == "Test"
+
+    def test_aligned_descriptions_with_default_width(self):
+        """Test that multiple trackers with default width are aligned."""
+        ProgressTracker.set_default_desc_width(20)
+
+        tracker1 = ProgressTracker(desc="Short", enabled=False)
+        tracker2 = ProgressTracker(desc="Medium length", enabled=False)
+        tracker3 = ProgressTracker(desc="Very long description", enabled=False)
+
+        # First two should be padded to 20 chars
+        assert len(tracker1.desc) == 20
+        assert len(tracker2.desc) == 20
+        # Third is longer than 20, so stays as-is
+        assert tracker3.desc == "Very long description"
+
+    def test_desc_width_with_tqdm(self):
+        """Test that padded description is passed to tqdm."""
+        with patch("ap_common.progress.tqdm") as mock_tqdm:
+            mock_pbar = MagicMock()
+            mock_tqdm.return_value = mock_pbar
+
+            tracker = ProgressTracker(desc="Test", enabled=True, desc_width=20)
+            tracker.start()
+
+            mock_tqdm.assert_called_once()
+            call_kwargs = mock_tqdm.call_args[1]
+            assert call_kwargs["desc"] == "Test                "
+            assert len(call_kwargs["desc"]) == 20
+
+
 class TestProgressIntegration:
     """Integration tests for progress utilities."""
 

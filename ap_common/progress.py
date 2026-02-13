@@ -77,6 +77,7 @@ class ProgressTracker:
         unit: Unit name shown in progress stats
         enabled: Whether to show progress (False = no-op)
         total: Total count if known
+        desc_width: Width to pad description to (default: use class default)
 
     Example as context manager:
         with ProgressTracker(files, desc="Processing") as tracker:
@@ -90,7 +91,31 @@ class ProgressTracker:
         for item in generator():
             tracker.update(status=item.name)
         tracker.finish()
+
+    Example with aligned descriptions:
+        ProgressTracker.set_default_desc_width(20)
+        # All future trackers will pad descriptions to 20 chars
     """
+
+    _default_desc_width: int | None = None
+
+    @classmethod
+    def set_default_desc_width(cls, width: int | None) -> None:
+        """
+        Set default description width for all ProgressTracker instances.
+
+        When set, all descriptions will be right-padded with spaces to this width,
+        creating left-justified aligned output across multiple progress bars.
+
+        Args:
+            width: Target width in characters, or None to disable padding
+
+        Example:
+            ProgressTracker.set_default_desc_width(20)
+            # "Loading metadata    : 100%|..."
+            # "Creating masters    : 100%|..."
+        """
+        cls._default_desc_width = width
 
     def __init__(
         self,
@@ -99,14 +124,21 @@ class ProgressTracker:
         unit: str = "files",
         enabled: bool = True,
         total: int = None,
+        desc_width: int | None = None,
     ):
         self.iterable = iterable
-        self.desc = desc
         self.unit = unit
         self.enabled = enabled
         self.total = total
         self._pbar = None
         self._iterator = None
+
+        # Apply description width padding (instance param overrides class default)
+        width = desc_width if desc_width is not None else self._default_desc_width
+        if width is not None:
+            self.desc = desc.ljust(width)
+        else:
+            self.desc = desc
 
     def start(self):
         """Start the progress bar (for manual mode)."""
