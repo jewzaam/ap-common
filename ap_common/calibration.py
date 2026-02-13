@@ -18,7 +18,7 @@ from ap_common.constants import (
     TYPE_MASTER_BIAS,
     NORMALIZED_HEADER_TYPE,
     NORMALIZED_HEADER_EXPOSURESECONDS,
-    DEFAULT_IMAGE_PATTERNS,
+    DEFAULT_CALIBRATION_PATTERNS,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ def find_matching_darks(
         allow_shorter_exposure: If True, accept darks with exposure < light exposure
                                 If False, only accept exact exposure match
         recursive: If True, search subdirectories; if False, search only this directory
-        patterns: File patterns to match (defaults to DEFAULT_IMAGE_PATTERNS)
+        patterns: File patterns to match (defaults to DEFAULT_CALIBRATION_PATTERNS)
         profileFromPath: Extract metadata from path when possible (default True for efficiency)
         printStatus: Show progress output (default False)
 
@@ -81,8 +81,10 @@ def find_matching_darks(
 
     # Search for all matching darks (any exposure)
     if patterns is None:
-        patterns = DEFAULT_IMAGE_PATTERNS
+        patterns = DEFAULT_CALIBRATION_PATTERNS
 
+    # IMPORTANT: profileFromPath only works with blink/data directory structure
+    # For library searches, it should typically be False to read actual file headers
     darks = get_filtered_metadata(
         dirs=[str(search_dir)],
         filters=filter_criteria,
@@ -93,7 +95,9 @@ def find_matching_darks(
     )
 
     if not darks:
-        logger.debug("No darks found matching criteria")
+        logger.debug(
+            f"No darks found matching criteria in {search_dir} (recursive={recursive}, patterns={patterns})"
+        )
         return []
 
     logger.debug(f"Found {len(darks)} darks matching criteria")
@@ -145,7 +149,7 @@ def find_matching_flats(
         reference: Light frame metadata to match against
         match_fields: List of metadata fields that must match exactly
         recursive: If True, search subdirectories; if False, search only this directory
-        patterns: File patterns to match (defaults to DEFAULT_IMAGE_PATTERNS)
+        patterns: File patterns to match (defaults to DEFAULT_CALIBRATION_PATTERNS)
         profileFromPath: Extract metadata from path when possible (default True for efficiency)
         printStatus: Show progress output (default False)
 
@@ -183,7 +187,7 @@ def find_matching_flats(
 
     # Search for matching flats
     if patterns is None:
-        patterns = DEFAULT_IMAGE_PATTERNS
+        patterns = DEFAULT_CALIBRATION_PATTERNS
 
     flats = get_filtered_metadata(
         dirs=[str(search_dir)],
@@ -217,7 +221,7 @@ def find_matching_bias(
         reference: Light frame metadata to match against
         match_fields: List of metadata fields that must match exactly
         recursive: If True, search subdirectories; if False, search only this directory
-        patterns: File patterns to match (defaults to DEFAULT_IMAGE_PATTERNS)
+        patterns: File patterns to match (defaults to DEFAULT_CALIBRATION_PATTERNS)
         profileFromPath: Extract metadata from path when possible (default True for efficiency)
         printStatus: Show progress output (default False)
 
@@ -247,7 +251,7 @@ def find_matching_bias(
 
     # Search for matching bias
     if patterns is None:
-        patterns = DEFAULT_IMAGE_PATTERNS
+        patterns = DEFAULT_CALIBRATION_PATTERNS
 
     bias = get_filtered_metadata(
         dirs=[str(search_dir)],
