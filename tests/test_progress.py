@@ -65,6 +65,32 @@ class TestProgressIter:
         result = list(progress_iter([], enabled=True))
         assert result == []
 
+    def test_desc_width_parameter(self):
+        """Test that desc_width pads description in progress_iter."""
+        items = [1, 2, 3]
+        with patch("ap_common.progress.tqdm") as mock_tqdm:
+            mock_tqdm.return_value = iter(items)
+            list(progress_iter(items, desc="Test", enabled=True, desc_width=20))
+            mock_tqdm.assert_called_once()
+            call_kwargs = mock_tqdm.call_args[1]
+            assert call_kwargs["desc"] == "Test                "
+            assert len(call_kwargs["desc"]) == 20
+
+    def test_respects_default_desc_width(self):
+        """Test that progress_iter respects ProgressTracker class default."""
+        items = [1, 2, 3]
+        ProgressTracker.set_default_desc_width(20)
+        try:
+            with patch("ap_common.progress.tqdm") as mock_tqdm:
+                mock_tqdm.return_value = iter(items)
+                list(progress_iter(items, desc="Short", enabled=True))
+                mock_tqdm.assert_called_once()
+                call_kwargs = mock_tqdm.call_args[1]
+                assert call_kwargs["desc"] == "Short               "
+                assert len(call_kwargs["desc"]) == 20
+        finally:
+            ProgressTracker.set_default_desc_width(None)
+
 
 class TestProgressTracker:
     """Tests for ProgressTracker class."""
@@ -283,3 +309,36 @@ class TestProgressIntegration:
                 processed.append(f)
 
         assert processed == files
+
+    def test_both_progress_methods_align_with_default_width(self):
+        """Test that progress_iter and ProgressTracker both respect default width."""
+        ProgressTracker.set_default_desc_width(20)
+        try:
+            items = [1, 2, 3]
+
+            # Test progress_iter
+            with patch("ap_common.progress.tqdm") as mock_tqdm:
+                mock_tqdm.return_value = iter(items)
+                list(progress_iter(items, desc="Loading metadata", enabled=True))
+                call_kwargs = mock_tqdm.call_args[1]
+                iter_desc = call_kwargs["desc"]
+                assert len(iter_desc) == 20
+                assert iter_desc == "Loading metadata    "
+
+            # Test ProgressTracker
+            with patch("ap_common.progress.tqdm") as mock_tqdm:
+                mock_pbar = MagicMock()
+                mock_tqdm.return_value = mock_pbar
+
+                tracker = ProgressTracker(desc="Creating masters", enabled=True)
+                tracker.start()
+
+                call_kwargs = mock_tqdm.call_args[1]
+                tracker_desc = call_kwargs["desc"]
+                assert len(tracker_desc) == 20
+                assert tracker_desc == "Creating masters    "
+
+            # Verify both are the same length (aligned)
+            assert len(iter_desc) == len(tracker_desc)
+        finally:
+            ProgressTracker.set_default_desc_width(None)
