@@ -9,7 +9,113 @@ import tempfile
 from pathlib import Path
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from ap_common.fits import get_file_headers, get_fits_headers, get_xisf_headers
+from ap_common.fits import (
+    get_file_headers,
+    get_fits_headers,
+    get_xisf_headers,
+    apply_file_naming_override,
+)
+
+
+class TestApplyFileNamingOverride:
+    """Tests for apply_file_naming_override utility function."""
+
+    def test_filters_conflicting_header_different_raw_keys(self):
+        """Test that filename headers take precedence over file headers.
+
+        When filename has DATE and file has DATE-OBS (different raw keys),
+        both can exist in raw output. Normalization (done by caller) will
+        resolve the conflict, with filename value winning.
+
+        Note: This tests the raw output before normalization. The actual
+        get_fits_headers/get_xisf_headers functions normalize after this,
+        which resolves the conflict.
+        """
+        file_headers = {"DATE-OBS": "2026-01-16T12:34:19", "FILTER": "H"}
+        filename_headers = {"DATE": "2026-02-07"}
+
+        result = apply_file_naming_override(file_headers, filename_headers)
+
+        # Both raw keys can exist (normalization happens later by caller)
+        # The important thing is filename header is present
+        assert "DATE" in result
+        assert result["DATE"] == "2026-02-07"
+        assert "FILTER" in result  # Non-conflicting header preserved
+
+    def test_filters_conflicting_header_same_raw_key(self):
+        """Test that file headers with same raw key are overridden by filename."""
+        file_headers = {"EXPOSURE": "300", "FILTER": "H"}
+        filename_headers = {"EXPOSURE": "100"}
+
+        result = apply_file_naming_override(file_headers, filename_headers)
+
+        # Filename EXPOSURE should override file EXPOSURE
+        assert "EXPOSURE" in result
+        assert result["EXPOSURE"] == "100"
+        assert "FILTER" in result
+
+    def test_preserves_non_conflicting_headers(self):
+        """Test that non-conflicting file headers are preserved."""
+        file_headers = {
+            "FILTER": "H",
+            "INSTRUME": "ZWO ASI2600MM Pro",
+            "TELESCOP": "C8E",
+        }
+        filename_headers = {"GAIN": "100"}
+
+        result = apply_file_naming_override(file_headers, filename_headers)
+
+        # All file headers should be preserved
+        assert result["FILTER"] == "H"
+        assert result["INSTRUME"] == "ZWO ASI2600MM Pro"
+        assert result["TELESCOP"] == "C8E"
+        # Filename header should be added
+        assert result["GAIN"] == "100"
+
+    def test_empty_filename_headers(self):
+        """Test with empty filename headers (no override)."""
+        file_headers = {"DATE-OBS": "2026-01-16", "FILTER": "H"}
+        filename_headers = {}
+
+        result = apply_file_naming_override(file_headers, filename_headers)
+
+        # All file headers should be preserved when no filename headers
+        assert result == file_headers
+
+    def test_empty_file_headers(self):
+        """Test with empty file headers (only filename)."""
+        file_headers = {}
+        filename_headers = {"DATE": "2026-02-07", "FILTER": "H"}
+
+        result = apply_file_naming_override(file_headers, filename_headers)
+
+        # Only filename headers should be present
+        assert result == filename_headers
+
+    def test_multiple_conflicting_headers(self):
+        """Test that multiple filename headers take precedence.
+
+        When there are multiple conflicting headers, filename values
+        are present in the output. Raw file header keys can coexist,
+        but normalization (done by caller) will resolve conflicts with
+        filename values winning.
+        """
+        file_headers = {
+            "DATE-OBS": "2026-01-16",
+            "EXPTIME": "300",
+            "FILTER": "H",
+            "INSTRUME": "Camera1",
+        }
+        filename_headers = {"DATE": "2026-02-07", "EXPOSURE": "100"}
+
+        result = apply_file_naming_override(file_headers, filename_headers)
+
+        # Filename headers must be present
+        assert result["DATE"] == "2026-02-07"
+        assert result["EXPOSURE"] == "100"
+        # Non-conflicting file headers preserved
+        assert result["FILTER"] == "H"
+        assert result["INSTRUME"] == "Camera1"
 
 
 class TestGetFileHeaders:
@@ -427,6 +533,79 @@ class TestGetXisfHeaders:
         # even though they use different raw keys (EXPOSURE vs EXPTIME)
         assert "exposureseconds" in result
         assert result["exposureseconds"] == "100.00"
+
+    @patch("ap_common.fits.xisf")
+    def test_xisf_date_from_path_overrides_date_obs_from_header(self, mock_xisf):
+        """Test that DATE from directory path overrides DATE-OBS from XISF header.
+
+        Regression test for library search bug where:
+        - Directory: DATE_2026-02-07/
+        - XISF header: DATE-OBS = 2026-01-16T12:34:19.816
+        - Expected: date = '2026-02-07' (from path)
+        - Actual (before fix): date = '2026-01-16' (from header) ❌
+
+        This test verifies that file_naming_override=True properly filters out
+        XISF headers whose normalized form conflicts with filename/path headers,
+        even when they use different raw keys (DATE vs DATE-OBS).
+        """
+        # XISF file contains DATE-OBS in its header
+        mock_metadata = [
+            {
+                "FITSKeywords": {
+                    "DATE-OBS": [{"value": "2026-01-16T12:34:19.816"}],
+                    "FILTER": [{"value": "H"}],
+                    "INSTRUME": [{"value": "ZWO ASI2600MM Pro"}],
+                }
+            }
+        ]
+        mock_xisf_file = Mock()
+        mock_xisf_file.get_images_metadata.return_value = mock_metadata
+        mock_xisf.XISF.return_value = mock_xisf_file
+
+        # Filename path includes DATE_2026-02-07 in directory
+        filename = (
+            "/library/MASTER FLAT/Camera/Optic/DATE_2026-02-07/masterFlat_FILTER_H.xisf"
+        )
+        result = get_xisf_headers(
+            filename, profileFromPath=False, file_naming_override=True, normalize=True
+        )
+
+        # DATE from path (2026-02-07) should take precedence over DATE-OBS from header
+        assert "date" in result
+        assert result["date"] == "2026-02-07", (
+            f"Expected date='2026-02-07' from path, got date='{result['date']}' "
+            "- file_naming_override should prevent DATE-OBS header from overriding path DATE"
+        )
+
+    @patch("ap_common.fits.xisf")
+    def test_xisf_focallen_from_filename_overrides_fits_keyword(self, mock_xisf):
+        """Test that FOCALLEN from filename overrides FOCALLEN from XISF header.
+
+        Regression test verifying that filename values take precedence over
+        FITS keywords with the same raw key name.
+        """
+        # XISF file contains FOCALLEN of 2000 in its header
+        mock_metadata = [
+            {
+                "FITSKeywords": {
+                    "FOCALLEN": [{"value": "2000"}],
+                    "FILTER": [{"value": "H"}],
+                }
+            }
+        ]
+        mock_xisf_file = Mock()
+        mock_xisf_file.get_images_metadata.return_value = mock_metadata
+        mock_xisf.XISF.return_value = mock_xisf_file
+
+        # Filename indicates FOCALLEN of 2032
+        filename = "/path/masterFlat_FILTER_H_FOCALLEN_2032.xisf"
+        result = get_xisf_headers(
+            filename, profileFromPath=False, file_naming_override=True, normalize=True
+        )
+
+        # Filename value (2032) should take precedence over file header value (2000)
+        assert "focallen" in result
+        assert result["focallen"] == "2032"
 
 
 class TestPathNormalization:

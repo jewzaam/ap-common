@@ -321,11 +321,23 @@ def filter_metadata(data: dict, filters: dict, debug: bool = False):
 
             else:
                 # default, treat as string
-                # Strip whitespace from both sides for FITS header compatibility
-                if str(datum[filter_key]).strip() != str(filter_value).strip():
-                    # not a match
-                    is_match = False
-                    break
+                # Try numeric comparison first if both values are numeric
+                # This handles cases like '2032' == '2032.0'
+                try:
+                    datum_float = float(str(datum[filter_key]).strip())
+                    filter_float = float(str(filter_value).strip())
+                    if datum_float != filter_float:
+                        # not a match
+                        is_match = False
+                        break
+                    # Match - continue to next filter
+                except (ValueError, TypeError):
+                    # Not numeric, fall back to string comparison
+                    # Strip whitespace from both sides for FITS header compatibility
+                    if str(datum[filter_key]).strip() != str(filter_value).strip():
+                        # not a match
+                        is_match = False
+                        break
 
         # all filters have been checked, did we find a match?
         if is_match:

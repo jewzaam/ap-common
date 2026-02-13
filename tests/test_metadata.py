@@ -147,6 +147,90 @@ class TestFilterMetadata:
         assert len(result) == 1
         assert "file1.fits" in result
 
+    def test_numeric_string_comparison_matches_different_decimal_representation(self):
+        """Test that numeric strings match despite different decimal representations.
+
+        Regression test for library search bug where:
+        - File: focallen = '2032' (no decimal)
+        - Search: focallen = '2032.0' (with decimal)
+        - Expected: Match (both are 2032)
+        - Actual (before fix): No match ('2032' != '2032.0' string comparison) ❌
+
+        This test verifies that filter_metadata tries numeric comparison before
+        falling back to string comparison, allowing '2032' to match '2032.0'.
+        """
+        data = {
+            "file1.xisf": {"focallen": "2032"},  # No decimal
+            "file2.xisf": {"focallen": "2000.0"},  # Different value
+        }
+        filters = {"focallen": "2032.0"}  # With decimal
+
+        result = filter_metadata(data, filters)
+
+        assert len(result) == 1
+        assert (
+            "file1.xisf" in result
+        ), "Expected focallen='2032' to match filter='2032.0' via numeric comparison"
+        assert "file2.xisf" not in result
+
+    def test_numeric_string_comparison_with_integer_string(self):
+        """Test that integer strings match float strings numerically."""
+        data = {
+            "file1.xisf": {"gain": "100"},  # Integer string
+            "file2.xisf": {"gain": "200"},  # Different value
+        }
+        filters = {"gain": "100.0"}  # Float string
+
+        result = filter_metadata(data, filters)
+
+        assert len(result) == 1
+        assert "file1.xisf" in result
+
+    def test_numeric_string_comparison_falls_back_to_string(self):
+        """Test that non-numeric strings still use string comparison."""
+        data = {
+            "file1.fits": {"camera": "ASI2600MM"},
+            "file2.fits": {"camera": "Canon EOS"},
+        }
+        filters = {"camera": "ASI2600MM"}
+
+        result = filter_metadata(data, filters)
+
+        assert len(result) == 1
+        assert "file1.fits" in result
+
+    def test_numeric_string_comparison_with_negative_values(self):
+        """Test numeric comparison with negative temperature values."""
+        data = {
+            "file1.xisf": {"settemp": "-10.00"},
+            "file2.xisf": {"settemp": "-10.0"},
+            "file3.xisf": {"settemp": "-10"},
+            "file4.xisf": {"settemp": "-5.0"},
+        }
+        filters = {"settemp": "-10.0"}
+
+        result = filter_metadata(data, filters)
+
+        # All three representations of -10 should match
+        assert len(result) == 3
+        assert "file1.xisf" in result
+        assert "file2.xisf" in result
+        assert "file3.xisf" in result
+        assert "file4.xisf" not in result
+
+    def test_numeric_string_comparison_preserves_exact_string_match(self):
+        """Test that exact string matches still work when not numeric."""
+        data = {
+            "file1.fits": {"filter": "Ha"},
+            "file2.fits": {"filter": "OIII"},
+        }
+        filters = {"filter": "Ha"}
+
+        result = filter_metadata(data, filters)
+
+        assert len(result) == 1
+        assert "file1.fits" in result
+
 
 class TestGetMetadata:
     """Tests for get_metadata function."""

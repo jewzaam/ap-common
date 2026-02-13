@@ -22,6 +22,57 @@ from ap_common.utils import resolve_path
 logger = logging.getLogger(__name__)
 
 
+def apply_file_naming_override(
+    file_headers: Dict[str, str],
+    filename_headers: Dict[str, str],
+) -> Dict[str, str]:
+    """
+    Apply file naming override logic to file headers.
+
+    Filters out file headers whose normalized form conflicts with filename headers,
+    then merges with filename headers taking precedence.
+
+    This implements the core logic for file_naming_override=True behavior:
+    - Filename/path values override file header values
+    - Handles different raw keys that normalize to same key (DATE vs DATE-OBS)
+    - Handles same raw keys (EXPOSURE in both filename and file)
+
+    Args:
+        file_headers: Headers read from the file (FITS/XISF keywords)
+        filename_headers: Headers parsed from filename/path (via get_file_headers)
+
+    Returns:
+        Merged headers dict with filename values taking precedence
+
+    Example:
+        # Filename has DATE=2026-02-07, file has DATE-OBS=2026-01-16
+        file_headers = {'DATE-OBS': '2026-01-16', 'FILTER': 'H'}
+        filename_headers = {'DATE': '2026-02-07'}
+        result = apply_file_naming_override(file_headers, filename_headers)
+        # Returns: {'FILTER': 'H', 'DATE': '2026-02-07'}
+        # DATE-OBS filtered out because it conflicts with filename DATE
+    """
+    # Build set of normalized keys from filename headers
+    normalized_keys_from_filename = get_normalized_keys_set(filename_headers)
+
+    # Filter out file headers whose normalized form conflicts with filename headers
+    # (e.g., remove DATE-OBS if filename has DATE, since both → date)
+    # Only filter if ALL normalized keys from this header are provided by filename
+    if normalized_keys_from_filename:
+        filtered_file_headers = {}
+        for k, v in file_headers.items():
+            # Get all normalized keys this raw header produces
+            normalized_keys = get_all_normalized_keys(k)
+            # Only filter if ALL normalized keys are already in filename
+            if not all(nk in normalized_keys_from_filename for nk in normalized_keys):
+                filtered_file_headers[k] = v
+        file_headers = filtered_file_headers
+
+    # Merge: filename headers are added last so they take precedence
+    output = dict(list(file_headers.items()) + list(filename_headers.items()))
+    return output
+
+
 def get_file_headers(
     filename: str,
     profileFromPath: bool,
@@ -149,12 +200,6 @@ def get_fits_headers(
     filename = resolved
 
     file_output = {}
-    output = {}
-
-    # Build a set of normalized keys from filename headers to detect conflicts
-    # with FITS headers that use different raw keys but normalize to the same key
-    # (e.g., filename has EXPOSURE but FITS has EXPTIME - both normalize to exposureseconds)
-    normalized_keys_from_filename = set()
 
     if file_naming_override:
         # Don't normalize yet - use raw keys so filename headers properly
@@ -166,9 +211,8 @@ def get_fits_headers(
             profileFromPath=profileFromPath,
             directory_accept=directory_accept,
         )
-        # Build set of normalized keys to detect conflicts
-        normalized_keys_from_filename = get_normalized_keys_set(file_output)
 
+    # Read FITS headers
     with fits.open(filename) as fits_file:
         # get all headers (key/value) as dict from primary image
         output = dict(fits_file[0].header)
@@ -177,21 +221,9 @@ def get_fits_headers(
         if output[k] is not None and not isinstance(output[k], str):
             output[k] = str(output[k])
 
-    # Filter out FITS headers whose normalized form would conflict with filename headers
-    # (e.g., remove EXPTIME if filename has EXPOSURE, since both → exposureseconds)
-    # Only filter if ALL normalized keys from this header are provided by filename
-    if normalized_keys_from_filename:
-        filtered_output = {}
-        for k, v in output.items():
-            # Get all normalized keys this raw header produces
-            normalized_keys = get_all_normalized_keys(k)
-            # Only filter if ALL normalized keys are already in filename
-            if not all(nk in normalized_keys_from_filename for nk in normalized_keys):
-                filtered_output[k] = v
-        output = filtered_output
-
-    # file naming is higher priority but might be empty
-    output = dict(list(output.items()) + list(file_output.items()))
+    # Apply file naming override if requested
+    if file_naming_override:
+        output = apply_file_naming_override(output, file_output)
 
     # normalize if required
     if normalize:
@@ -222,37 +254,27 @@ def get_xisf_headers(
         raise ValueError(f"Could not resolve path: {filename}")
     filename = resolved
 
+    file_output = {}
     output = {}
 
-    # Build a set of normalized keys from filename headers to detect conflicts
-    # with XISF headers that use different raw keys but normalize to the same key
-    # (e.g., filename has EXPOSURE but XISF has EXPTIME - both normalize to exposureseconds)
-    normalized_keys_from_filename = set()
-
     if file_naming_override:
-        # Don't normalize yet - we need raw keys to properly merge with XISF headers.
+        # Don't normalize yet - use raw keys so filename headers properly
+        # override XISF headers with the same raw keys during merge.
         # Normalization happens at the end after all headers are collected.
-        output = get_file_headers(
+        file_output = get_file_headers(
             filename,
             normalize=False,
             profileFromPath=profileFromPath,
             directory_accept=directory_accept,
         )
-        # Build set of normalized keys to detect conflicts
-        normalized_keys_from_filename = get_normalized_keys_set(output)
 
+    # Read XISF headers
     xisf_file = xisf.XISF(filename)
     metadata = xisf_file.get_images_metadata()
     # get all fits headers from metadata, converted to string
     for k in metadata[0]["FITSKeywords"].keys():
-        # Skip HISTORY and keys that already exist (raw key match)
-        if k in output or k == "HISTORY":
-            continue
-        # Skip keys whose normalized form would conflict with filename headers
-        # (e.g., skip EXPTIME if filename already has EXPOSURE, since both → exposureseconds)
-        # Only skip if ALL normalized keys from this header are provided by filename
-        normalized_keys = get_all_normalized_keys(k)
-        if all(nk in normalized_keys_from_filename for nk in normalized_keys):
+        # Skip HISTORY
+        if k == "HISTORY":
             continue
         if (
             len(metadata[0]["FITSKeywords"][k]) > 0
@@ -261,6 +283,11 @@ def get_xisf_headers(
             v = metadata[0]["FITSKeywords"][k][0]["value"]
             if v is not None and str(v) != "":
                 output[k] = str(v)
+
+    # Apply file naming override if requested
+    if file_naming_override:
+        output = apply_file_naming_override(output, file_output)
+
     # normalize if required
     if normalize:
         output = normalize_headers(output)
