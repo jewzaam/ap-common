@@ -14,6 +14,7 @@ import logging
 from ap_common.metadata import (
     get_metadata,
     build_normalized_filters,
+    filter_metadata,
 )
 from ap_common.constants import (
     TYPE_MASTER_DARK,
@@ -288,12 +289,8 @@ def find_matching_darks_from_cache(
     logger.debug(f"Searching for darks in cache with criteria: {filter_criteria}")
     logger.debug(f"Target exposure: {light_exposure}s")
 
-    # Filter from provided metadata dict
-    darks = {}
-    for filename, metadata in metadata_dict.items():
-        # Check if metadata matches all filter criteria
-        if all(metadata.get(k) == v for k, v in filter_criteria.items()):
-            darks[filename] = metadata
+    # Filter from provided metadata dict using numeric-aware comparison
+    darks = filter_metadata(metadata_dict, filter_criteria)
 
     logger.debug(f"Found {len(darks)} darks matching criteria in cache")
 
@@ -365,12 +362,8 @@ def find_matching_flats_from_cache(
 
     logger.debug(f"Searching for flats in cache with criteria: {filter_criteria}")
 
-    # Filter from provided metadata dict
-    flats = {}
-    for filename, metadata in metadata_dict.items():
-        # Check if metadata matches all filter criteria
-        if all(metadata.get(k) == v for k, v in filter_criteria.items()):
-            flats[filename] = metadata
+    # Filter from provided metadata dict using numeric-aware comparison
+    flats = filter_metadata(metadata_dict, filter_criteria)
 
     logger.debug(f"Found {len(flats)} matching flats in cache")
 
@@ -420,12 +413,8 @@ def find_matching_bias_from_cache(
 
     logger.debug(f"Searching for bias in cache with criteria: {filter_criteria}")
 
-    # Filter from provided metadata dict
-    bias = {}
-    for filename, metadata in metadata_dict.items():
-        # Check if metadata matches all filter criteria
-        if all(metadata.get(k) == v for k, v in filter_criteria.items()):
-            bias[filename] = metadata
+    # Filter from provided metadata dict using numeric-aware comparison
+    bias = filter_metadata(metadata_dict, filter_criteria)
 
     logger.debug(f"Found {len(bias)} matching bias frames in cache")
 
