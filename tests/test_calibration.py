@@ -598,3 +598,110 @@ class TestCacheBasedCalibrationFunctions:
         # Should find only dark1 (matches camera+gain, not dark2 or flat1)
         assert len(result) == 1
         assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/dark1.fits"
+
+    def test_numeric_string_comparison_in_flats_from_cache(self):
+        """Test that flats match with different decimal representations.
+
+        Regression test for bug where focal length "2032" doesn't match "2032.0".
+        The *_from_cache functions should use numeric-aware comparison like
+        filter_metadata() does, not simple string comparison.
+        """
+        from ap_common.constants import NORMALIZED_HEADER_FOCALLEN
+
+        # Flat has focal length without decimal
+        metadata_dict = {
+            "/path/flat1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_FLAT,
+                NORMALIZED_HEADER_FILENAME: "/path/flat1.fits",
+                NORMALIZED_HEADER_FILTER: "Ha",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_FOCALLEN: "2032",  # No decimal
+            },
+        }
+
+        # Reference has focal length with decimal
+        reference = {
+            NORMALIZED_HEADER_FILTER: "Ha",
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_FOCALLEN: "2032.0",  # With decimal
+        }
+
+        result = find_matching_flats_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[
+                NORMALIZED_HEADER_CAMERA,
+                NORMALIZED_HEADER_FILTER,
+                NORMALIZED_HEADER_FOCALLEN,
+            ],
+        )
+
+        # Should match via numeric comparison
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/flat1.fits"
+
+    def test_numeric_string_comparison_in_darks_from_cache(self):
+        """Test that darks match with different decimal representations."""
+        # Dark has gain without decimal
+        metadata_dict = {
+            "/path/dark1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_DARK,
+                NORMALIZED_HEADER_FILENAME: "/path/dark1.fits",
+                NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",  # Integer string
+            },
+        }
+
+        # Reference has gain with decimal
+        reference = {
+            NORMALIZED_HEADER_EXPOSURESECONDS: "60.0",
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: "100.0",  # Float string
+        }
+
+        result = find_matching_darks_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN],
+        )
+
+        # Should match via numeric comparison
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/dark1.fits"
+
+    def test_numeric_string_comparison_in_bias_from_cache(self):
+        """Test that bias frames match with different decimal representations."""
+        from ap_common.constants import NORMALIZED_HEADER_SETTEMP
+
+        # Bias has settemp as integer string
+        metadata_dict = {
+            "/path/bias1.fits": {
+                NORMALIZED_HEADER_TYPE: TYPE_MASTER_BIAS,
+                NORMALIZED_HEADER_FILENAME: "/path/bias1.fits",
+                NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+                NORMALIZED_HEADER_GAIN: "100",
+                NORMALIZED_HEADER_SETTEMP: "-10",  # Integer string
+            },
+        }
+
+        # Reference has settemp with decimal
+        reference = {
+            NORMALIZED_HEADER_CAMERA: "ASI2600MM",
+            NORMALIZED_HEADER_GAIN: "100",
+            NORMALIZED_HEADER_SETTEMP: "-10.0",  # Float string
+        }
+
+        result = find_matching_bias_from_cache(
+            metadata_dict=metadata_dict,
+            reference=reference,
+            match_fields=[
+                NORMALIZED_HEADER_CAMERA,
+                NORMALIZED_HEADER_GAIN,
+                NORMALIZED_HEADER_SETTEMP,
+            ],
+        )
+
+        # Should match via numeric comparison
+        assert len(result) == 1
+        assert result[0][NORMALIZED_HEADER_FILENAME] == "/path/bias1.fits"
