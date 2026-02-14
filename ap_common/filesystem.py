@@ -39,7 +39,8 @@ def copy_file(from_file: str, to_file: str, debug: bool = False, dryrun: bool = 
 
 def move_file(from_file: str, to_file: str, debug: bool = False, dryrun: bool = False):
     """
-    Moves a file from one location to another, optionally printing debug info and supporting dry run mode.
+    Moves a file from one location to another, optionally printing
+    debug info and supporting dry run mode.
 
     Args:
         from_file: Source file path

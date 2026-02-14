@@ -2,7 +2,6 @@
 Unit tests for ap_common.progress module.
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
 from ap_common.progress import progress_iter, ProgressTracker
 

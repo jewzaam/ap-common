@@ -9,11 +9,15 @@ Example usage in external tools:
     from ap_common.progress import progress_iter, ProgressTracker
 
     # Simple iteration with progress bar
-    for filename in progress_iter(filenames, desc="Moving files", enabled=show_progress):
+    for filename in progress_iter(
+        filenames, desc="Moving files", enabled=show_progress
+    ):
         move_file(filename, dest)
 
     # With dynamic status updates
-    with ProgressTracker(filenames, desc="Processing", enabled=show_progress) as tracker:
+    with ProgressTracker(
+        filenames, desc="Processing", enabled=show_progress
+    ) as tracker:
         for filename in tracker:
             tracker.set_status(f"Current: {os.path.basename(filename)}")
             process_file(filename)
@@ -49,7 +53,8 @@ def progress_iter(
         unit: Unit name shown in progress stats (e.g., "files", "dirs")
         enabled: Whether to show progress (False = passthrough)
         total: Total count if known (auto-detected for sequences)
-        desc_width: Width to pad description to (default: use ProgressTracker class default)
+        desc_width: Width to pad description to
+            (default: use ProgressTracker class default)
 
     Returns:
         Iterator that yields items from the iterable

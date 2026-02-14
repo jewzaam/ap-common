@@ -81,15 +81,19 @@ def get_file_headers(
     directory_accept: str = None,
 ):
     """
-    Extracts headers from a filename, optionally normalizing and extracting profile/object information from the path.
-    Handles special cases for certain header keys and file types.
+    Extracts headers from a filename, optionally normalizing
+    and extracting profile/object information from the path.
+    Handles special cases for certain header keys and file
+    types.
 
     Args:
         filename: Path to the file
-        profileFromPath: Whether to extract profile (optic, focal ratio, camera) from path
+        profileFromPath: Whether to extract profile
+            (optic, focal ratio, camera) from path
         objectFromPath: Whether to extract object name from path
         normalize: Whether to normalize the headers
-        directory_accept: The "accept" directory name to look for (project-specific, defaults to "accept")
+        directory_accept: The "accept" directory name to
+            look for (project-specific, defaults to "accept")
     """
     # Normalize path separators to OS-appropriate format
     resolved = resolve_path(filename)
@@ -104,12 +108,14 @@ def get_file_headers(
     }
 
     # SPECIAL CASES:
-    # SET-TEMP: A key with a dash.  Thanks NINA.  Handle it before parsing by removing the dash.
+    # SET-TEMP: A key with a dash.  Thanks NINA.
+    # Handle it before parsing by removing the dash.
     if "SET-TEMP" in filename:
         filename = filename.replace("SET-TEMP", "SETTEMP")
 
     # Hate special cases so it is optional.
-    # Pick OBJECT from the path.  Is the beginning of the dir that is _parent_ of "accept".
+    # Pick OBJECT from the path.  Is the beginning of the
+    # dir that is _parent_ of "accept".
     if objectFromPath and directory_accept in filename:
         # inject OBJECT_ at beginning of path before accept.
         # do this by splitting path and finding accept
@@ -184,7 +190,8 @@ def get_fits_headers(
     directory_accept: str = None,
 ):
     """
-    Extracts and normalizes FITS headers from a file, optionally overriding with headers from the filename.
+    Extracts and normalizes FITS headers from a file,
+    optionally overriding with headers from the filename.
 
     Args:
         filename: Path to the FITS file
@@ -239,7 +246,8 @@ def get_xisf_headers(
     directory_accept: str = None,
 ):
     """
-    Extracts and normalizes XISF headers from a file, optionally overriding with headers from the filename.
+    Extracts and normalizes XISF headers from a file,
+    optionally overriding with headers from the filename.
 
     Args:
         filename: Path to the XISF file

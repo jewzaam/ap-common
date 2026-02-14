@@ -30,7 +30,8 @@ def get_metadata(
     longitude: str = None,
 ):
     """
-    Loads metadata for files in the given directories, ensuring all required properties are present.
+    Loads metadata for files in the given directories,
+    ensuring all required properties are present.
     Optionally prints status updates.
 
     Args:
@@ -41,15 +42,19 @@ def get_metadata(
         required_properties: List of properties that must be present in metadata
         debug: Print debug information
         printStatus: Print status updates during processing
-        latitude: Optional latitude override for files that don't have location data (e.g., CR2 files)
-        longitude: Optional longitude override for files that don't have location data (e.g., CR2 files)
+        latitude: Optional latitude override for files that
+            don't have location data (e.g., CR2 files)
+        longitude: Optional longitude override for files
+            that don't have location data (e.g., CR2 files)
 
     Returns:
-        Dictionary mapping filenames to their metadata dictionaries
+        Dictionary mapping filenames to their metadata
+        dictionaries
 
     Raises:
-        ValueError: If latitude or longitude is required (in required_properties) but not found
-            in file headers and not provided as parameters
+        ValueError: If latitude or longitude is required
+            (in required_properties) but not found in file
+            headers and not provided as parameters
     """
     if patterns is None:
         patterns = [r".*\.fits$"]
@@ -104,8 +109,9 @@ def enrich_metadata(
     longitude: str = None,
 ):
     """
-    Enriches metadata for files missing required properties by extracting additional headers from the files themselves.
-    Optionally prints status updates.
+    Enriches metadata for files missing required properties
+    by extracting additional headers from the files
+    themselves. Optionally prints status updates.
 
     Args:
         data: Dictionary mapping filenames to metadata dictionaries
@@ -113,15 +119,20 @@ def enrich_metadata(
         required_properties: List of properties that must be present
         debug: Print debug information
         printStatus: Print status updates during processing
-        latitude: Optional latitude override for files that don't have location data (e.g., CR2 files)
-        longitude: Optional longitude override for files that don't have location data (e.g., CR2 files)
+        latitude: Optional latitude override for files
+            that don't have location data
+            (e.g., CR2 files)
+        longitude: Optional longitude override for files
+            that don't have location data
+            (e.g., CR2 files)
 
     Returns:
         Dictionary with enriched metadata
 
     Raises:
-        ValueError: If latitude or longitude is required (in required_properties) but not found
-            in file headers and not provided as parameters
+        ValueError: If latitude or longitude is required
+            (in required_properties) but not found in file
+            headers and not provided as parameters
     """
     if required_properties is None:
         required_properties = []
@@ -192,8 +203,10 @@ def enrich_metadata(
                     raise ValueError(
                         f"Required property '{rp}' is missing for file '{filename}'. "
                         f"Location data is not available from file headers. "
-                        f"Please provide latitude and/or longitude parameters to enrich_metadata() "
-                        f"or ensure the file contains location information in its headers."
+                        f"Please provide latitude and/or longitude "
+                        f"parameters to enrich_metadata() or ensure "
+                        f"the file contains location information "
+                        f"in its headers."
                     )
 
     return data
@@ -220,9 +233,18 @@ def build_normalized_filters(
         Filters dict with only non-None values, stripped of whitespace
 
     Example:
-        >>> from ap_common.constants import NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN
-        >>> metadata = {NORMALIZED_HEADER_CAMERA: "ASI2600MM  ", NORMALIZED_HEADER_GAIN: None}
-        >>> build_normalized_filters(metadata, [NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN])
+        >>> from ap_common.constants import (
+        ...     NORMALIZED_HEADER_CAMERA,
+        ...     NORMALIZED_HEADER_GAIN,
+        ... )
+        >>> metadata = {
+        ...     NORMALIZED_HEADER_CAMERA: "ASI2600MM  ",
+        ...     NORMALIZED_HEADER_GAIN: None,
+        ... }
+        >>> build_normalized_filters(
+        ...     metadata,
+        ...     [NORMALIZED_HEADER_CAMERA, NORMALIZED_HEADER_GAIN],
+        ... )
         {'camera': 'ASI2600MM'}
     """
     # Build initial filters from metadata, stripping whitespace
@@ -269,14 +291,16 @@ def filter_metadata(data: dict, filters: dict, debug: bool = False):
     # filters are good.  process the data and build a new output data set
     output = {}
 
-    # for each datum, check filter.  if it matches all filters, add the datum to 'new_data'
+    # for each datum, check filter.  if it matches all filters,
+    # add the datum to 'new_data'
     for filename in data.keys():
         datum = data[filename]
         # process each filter for this datum
         # is_match will be False if at least one filter does not match
         is_match = True
 
-        # loop through each filter.  if any filter does not match set is_match False and break the loop
+        # loop through each filter.  if any filter does not match
+        # set is_match False and break the loop
         for filter_key in filters.keys():
             filter_value = filters[filter_key]
 
@@ -295,12 +319,15 @@ def filter_metadata(data: dict, filters: dict, debug: bool = False):
                 except Exception as e:
                     # no idea, bad function? bail!
                     raise RuntimeError(
-                        f"WARNING failed to call function '{filter_value}' with argument '{datum[filter_key]}': {e}"
+                        f"WARNING failed to call function "
+                        f"'{filter_value}' with argument "
+                        f"'{datum[filter_key]}': {e}"
                     )
 
             elif isinstance(filter_value, int):
                 try:
-                    # convert to float first because "90.00" won't convert to int directly
+                    # convert to float first because "90.00"
+                    # won't convert to int directly
                     if int(float(datum[filter_key])) != filter_value:
                         # not a match
                         is_match = False
@@ -363,26 +390,33 @@ def get_filtered_metadata(
     longitude: str = None,
 ):
     """
-    Loads metadata for files in given directories, then filters the metadata based on provided filters and required properties.
+    Loads metadata for files in given directories, then
+    filters based on provided filters and required properties.
 
     Args:
         dirs: List of directories to search
-        filters: Dictionary of filter key/value pairs or functions
+        filters: Dictionary of filter key/value pairs
+            or functions
         profileFromPath: Whether to extract profile from path
-        patterns: List of regex patterns to match (defaults to [r".*[.]fits$"])
+        patterns: List of regex patterns to match
+            (defaults to [r".*[.]fits$"])
         recursive: Whether to search recursively
-        required_properties: List of properties that must be present
+        required_properties: List of properties that must
+            be present
         debug: Print debug information
         printStatus: Print status updates during processing
-        latitude: Optional latitude override for files that don't have location data (e.g., CR2 files)
-        longitude: Optional longitude override for files that don't have location data (e.g., CR2 files)
+        latitude: Optional latitude override for files that
+            don't have location data (e.g., CR2 files)
+        longitude: Optional longitude override for files
+            that don't have location data (e.g., CR2 files)
 
     Returns:
         Filtered dictionary with only matching entries
 
     Raises:
-        ValueError: If latitude or longitude is required (in required_properties) but not found
-            in file headers and not provided as parameters
+        ValueError: If latitude or longitude is required
+            (in required_properties) but not found in file
+            headers and not provided as parameters
     """
     if patterns is None:
         patterns = [r".*\.fits$"]

@@ -113,6 +113,7 @@ __all__ = [
     "get_fits_headers",
     "get_xisf_headers",
     "get_file_headers",
+    "update_xisf_headers",
     # Normalization functions
     "normalize_headers",
     "normalize_date",

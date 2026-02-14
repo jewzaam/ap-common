@@ -72,7 +72,7 @@ def setup_logging(
     logger.setLevel(level)
 
     # Create console handler
-    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(level)
 
     # Create formatter

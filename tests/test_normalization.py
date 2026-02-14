@@ -102,7 +102,8 @@ class TestNormalizeDate:
             "2024-01-15T12:30:45", timezone_offset_from_gmt=5.0
         )
 
-        # UTC should stay on same day (2024-01-15), EST should be previous day (2024-01-14)
+        # UTC should stay on same day (2024-01-15),
+        # EST should be previous day (2024-01-14)
         assert result_utc == "2024-01-15"
         assert result_est == "2024-01-14"
         # Positive timezone should also stay on same day
@@ -464,7 +465,8 @@ class TestNormalizeFilename:
     def test_light_filename_without_focal_ratio(self):
         """Test LIGHT filename when focal_ratio is missing.
 
-        This tests the fix for issue #13 - should not raise KeyError when focal_ratio is missing.
+        This tests the fix for issue #13 - should not raise
+        KeyError when focal_ratio is missing.
         """
         headers = {
             "type": "LIGHT",
