@@ -404,11 +404,14 @@ class TestEnrichMetadata:
 
     @patch("ap_common.metadata.get_fits_headers")
     def test_enrich_with_missing_profile_keys_and_print_status(self, mock_get_fits):
-        """Test enriching metadata with printStatus=True but missing optic/focal_ratio/camera keys.
+        """Test enriching metadata with printStatus=True
+        but missing optic/focal_ratio/camera keys.
 
-        This tests the fix for issue #13 - should not raise KeyError when profile keys are missing.
+        This tests the fix for issue #13 - should not raise
+        KeyError when profile keys are missing.
         """
-        # Return enriched data that has targetname but is missing optic, focal_ratio, camera
+        # Return enriched data that has targetname but is
+        # missing optic, focal_ratio, camera
         mock_get_fits.return_value = {
             "type": "LIGHT",
             "targetname": "M42",
@@ -432,7 +435,8 @@ class TestEnrichMetadata:
 
     @patch("ap_common.metadata.get_fits_headers")
     def test_enrich_with_partial_profile_keys_and_print_status(self, mock_get_fits):
-        """Test enriching with only some profile keys present (e.g., optic but no focal_ratio)."""
+        """Test enriching with only some profile keys present
+        (e.g., optic but no focal_ratio)."""
         mock_get_fits.return_value = {
             "type": "LIGHT",
             "targetname": "M42",

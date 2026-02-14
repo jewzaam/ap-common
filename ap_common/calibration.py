@@ -13,7 +13,6 @@ import logging
 
 from ap_common.metadata import (
     get_metadata,
-    get_filtered_metadata,
     build_normalized_filters,
 )
 from ap_common.constants import (
@@ -49,7 +48,8 @@ def find_matching_darks(
                                 If False, only accept exact exposure match
         recursive: If True, search subdirectories; if False, search only this directory
         patterns: File patterns to match (defaults to DEFAULT_CALIBRATION_PATTERNS)
-        profileFromPath: Extract metadata from path when possible (default True for efficiency)
+        profileFromPath: Extract metadata from path when possible
+            (default True for efficiency)
         printStatus: Show progress output (default False)
 
     Returns:
@@ -85,7 +85,8 @@ def find_matching_darks(
 
     if not metadata_dict:
         logger.debug(
-            f"No files found in {search_dir} (recursive={recursive}, patterns={patterns})"
+            f"No files found in {search_dir} "
+            f"(recursive={recursive}, patterns={patterns})"
         )
         return []
 
@@ -116,7 +117,8 @@ def find_matching_flats(
         match_fields: List of metadata fields that must match exactly
         recursive: If True, search subdirectories; if False, search only this directory
         patterns: File patterns to match (defaults to DEFAULT_CALIBRATION_PATTERNS)
-        profileFromPath: Extract metadata from path when possible (default True for efficiency)
+        profileFromPath: Extract metadata from path when possible
+            (default True for efficiency)
         printStatus: Show progress output (default False)
 
     Returns:
@@ -155,7 +157,8 @@ def find_matching_flats(
 
     if not metadata_dict:
         logger.debug(
-            f"No files found in {search_dir} (recursive={recursive}, patterns={patterns})"
+            f"No files found in {search_dir} "
+            f"(recursive={recursive}, patterns={patterns})"
         )
         return []
 
@@ -185,7 +188,8 @@ def find_matching_bias(
         match_fields: List of metadata fields that must match exactly
         recursive: If True, search subdirectories; if False, search only this directory
         patterns: File patterns to match (defaults to DEFAULT_CALIBRATION_PATTERNS)
-        profileFromPath: Extract metadata from path when possible (default True for efficiency)
+        profileFromPath: Extract metadata from path when possible
+            (default True for efficiency)
         printStatus: Show progress output (default False)
 
     Returns:
@@ -216,7 +220,8 @@ def find_matching_bias(
 
     if not metadata_dict:
         logger.debug(
-            f"No files found in {search_dir} (recursive={recursive}, patterns={patterns})"
+            f"No files found in {search_dir} "
+            f"(recursive={recursive}, patterns={patterns})"
         )
         return []
 

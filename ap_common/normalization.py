@@ -98,15 +98,19 @@ def normalize_date(
     timezone_offset_from_gmt: float | None = None,
 ) -> str:
     """
-    Converts a date string to the standard output date format, adjusting for timezone offset.
-    The timezone offset is calculated as: timezone_offset_from_gmt - 12 hours.
+    Converts a date string to the standard output date
+    format, adjusting for timezone offset.
+    The timezone offset is calculated as:
+    timezone_offset_from_gmt - 12 hours.
     The -12 hours is hardcoded to adjust for middle-of-night date calculation.
 
     Args:
         date: Date string to normalize
         input_format: Optional input format override (defaults to INPUT_FORMAT_DATETIME)
-        output_format: Optional output format override (defaults to OUTPUT_FORMAT_DATE)
-        timezone_offset_from_gmt: Timezone offset from GMT in hours (e.g., -4 for EST, -5 for EDT).
+        output_format: Optional output format override
+            (defaults to OUTPUT_FORMAT_DATE)
+        timezone_offset_from_gmt: Timezone offset from
+            GMT in hours (e.g., -4 for EST, -5 for EDT).
             If None, uses the system's current timezone offset.
             Total offset applied will be: timezone_offset_from_gmt - 12
     """
@@ -151,8 +155,10 @@ def normalize_datetime(
     Args:
         date: Date string to normalize
         input_format: Optional input format override (defaults to INPUT_FORMAT_DATETIME)
-        output_format: Optional output format override (defaults to OUTPUT_FORMAT_DATETIME)
-        timezone_offset_from_gmt: Timezone offset from GMT in hours (e.g., -4 for EST, -5 for EDT).
+        output_format: Optional output format override
+            (defaults to OUTPUT_FORMAT_DATETIME)
+        timezone_offset_from_gmt: Timezone offset from
+            GMT in hours (e.g., -4 for EST, -5 for EDT).
             If None, uses the system's current timezone offset.
             Total offset applied will be: timezone_offset_from_gmt - 12
     """
@@ -186,7 +192,8 @@ def normalize_datetime(
 
 def normalize_target_name(input: str) -> list[str]:
     """
-    Splits a target name into the main target and panel if present, removing single quotes.
+    Splits a target name into the main target and panel
+    if present, removing single quotes.
     Returns a list [target, panel].
     """
     target = input
@@ -206,13 +213,15 @@ def normalize_headers(
     input: dict, timezone_offset_from_gmt: float | None = None
 ) -> dict:
     """
-    Normalizes a dictionary of headers using FILTER_NORMALIZATION_DATA and CONSTANT_NORMALIZATION_DATA.
+    Normalizes a dictionary of headers using
+    FILTER_NORMALIZATION_DATA and CONSTANT_NORMALIZATION_DATA.
     Converts keys to lower case if not found in normalization data.
     Handles special cases for target name and constants.
 
     Args:
         input: Dictionary of headers to normalize
-        timezone_offset_from_gmt: Optional timezone offset from GMT in hours (e.g., -4 for EST).
+        timezone_offset_from_gmt: Optional timezone offset
+            from GMT in hours (e.g., -4 for EST).
             If None, uses the system's current timezone offset.
             This is passed to normalize_date() and normalize_datetime() functions.
     """
@@ -299,7 +308,8 @@ def get_all_normalized_keys(raw_key: str) -> list[str]:
         raw_key: The raw FITS header key
 
     Returns:
-        List of all normalized keys this raw key produces, or [raw_key.lower()] if not in normalization data
+        List of all normalized keys this raw key produces,
+        or [raw_key.lower()] if not in normalization data
     """
     if raw_key in FILTER_NORMALIZATION_DATA:
         return list(FILTER_NORMALIZATION_DATA[raw_key].keys())
@@ -347,7 +357,8 @@ def normalize_filename(
     statedir: str | None = None,
 ) -> str:
     """
-    Constructs a normalized filename based on output directory, input filename, headers, and state directory.
+    Constructs a normalized filename based on output
+    directory, input filename, headers, and state directory.
     Ensures required headers are present and builds a path with relevant metadata.
     """
     file_extension = os.path.splitext(input_filename)[1]
@@ -396,14 +407,17 @@ def normalize_filename(
             output.append(headers["targetname"])
         except KeyError as e:
             logger.warning(
-                f"missing targetname for LIGHT file, perhaps is a snapshot file: {input_filename}, headers={headers}"
+                "missing targetname for LIGHT file, "
+                "perhaps is a snapshot file: "
+                f"{input_filename}, headers={headers}"
             )
             raise e
 
     # for all types...
     output.append(f"DATE_{headers['date']}")
 
-    # while we don't care about filter for bias and darks, it is used generally included out of NINA
+    # while we don't care about filter for bias and darks,
+    # it is used generally included out of NINA
     p = f"FILTER_{headers['filter']}_EXP_{headers['exposureseconds']}"
     if "settemp" in headers:
         p = f"{p}_SETTEMP_{headers['settemp']}"

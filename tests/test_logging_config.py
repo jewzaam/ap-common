@@ -3,7 +3,6 @@ Unit tests for ap_common.logging_config module.
 """
 
 import logging
-import pytest
 from io import StringIO
 
 from ap_common.logging_config import (
