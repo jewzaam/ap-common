@@ -1,12 +1,7 @@
 # ap-common
 
-[![Test](https://github.com/jewzaam/ap-common/workflows/Test/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/test.yml)
-[![Coverage](https://github.com/jewzaam/ap-common/workflows/Coverage%20Check/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/coverage.yml)
-[![Lint](https://github.com/jewzaam/ap-common/workflows/Lint/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/lint.yml)
-[![Format](https://github.com/jewzaam/ap-common/workflows/Format%20Check/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/format.yml)
-[![Type Check](https://github.com/jewzaam/ap-common/workflows/Type%20Check/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/typecheck.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Test](https://github.com/jewzaam/ap-common/workflows/Test/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/test.yml) [![Coverage](https://github.com/jewzaam/ap-common/workflows/Coverage%20Check/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/coverage.yml) [![Lint](https://github.com/jewzaam/ap-common/workflows/Lint/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/lint.yml) [![Format](https://github.com/jewzaam/ap-common/workflows/Format%20Check/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/format.yml) [![Type Check](https://github.com/jewzaam/ap-common/workflows/Type%20Check/badge.svg)](https://github.com/jewzaam/ap-common/actions/workflows/typecheck.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Shared functionality package for astrophotography tools. Provides common utilities for FITS/XISF header reading, metadata normalization, file operations, and metadata extraction/filtering.
 
@@ -149,66 +144,3 @@ Projects should pass their specific constants when calling these functions.
 - ✅ Clean separation of concerns
 - ✅ Easier testing of shared code
 - ✅ Can publish to PyPI if desired
-
-## Development
-
-### Running Tests
-
-Install development dependencies:
-```powershell
-pip install -e ".[dev]"
-```
-
-Run tests (choose one method):
-
-**Option 1: Direct pytest (Windows-friendly)**
-```powershell
-# Run all tests
-pytest
-
-# Run with verbose output
-pytest -v
-
-# Run with coverage report
-pytest --cov=ap_common --cov-report=html --cov-report=term
-```
-
-**Option 2: Using Make (requires make installation)**
-```powershell
-make test
-make test-verbose
-make test-coverage
-```
-
-**Installing Make on Windows 11:**
-
-The easiest way to install make on Windows 11:
-
-```powershell
-winget install ezwinports.make
-```
-
-After installation, close and reopen your terminal, or refresh the environment:
-```powershell
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-```
-
-**Alternative methods:**
-- **Chocolatey**: `choco install make`
-- **MSYS2/MinGW**: Install MSYS2, then `pacman -S make`
-- **WSL**: `sudo apt install make` (if using WSL)
-
-Verify installation:
-```powershell
-make --version
-```
-
-## Testing
-
-The package includes comprehensive unit tests covering all modules:
-- `test_utils.py` - Utility function tests
-- `test_normalization.py` - Header normalization tests
-- `test_filesystem.py` - File operation tests
-- `test_fits.py` - FITS/XISF header reading tests
-- `test_metadata.py` - Metadata extraction and filtering tests
-
