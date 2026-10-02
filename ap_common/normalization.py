@@ -231,7 +231,8 @@ def normalize_headers(
         if key in FILTER_NORMALIZATION_DATA.keys():
             norm_data = FILTER_NORMALIZATION_DATA[key]
             for normalized_keyword in norm_data:
-                if value is None:
+                # empty header (e.g. SITELAT = '') would crash float() converters
+                if value is None or str(value).strip() == "":
                     output[normalized_keyword] = ""
                 # For date/datetime normalization, pass timezone if provided
                 elif key == "DATE-OBS" and normalized_keyword in ["date", "datetime"]:
