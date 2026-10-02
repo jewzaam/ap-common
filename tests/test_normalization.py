@@ -292,6 +292,18 @@ class TestNormalizeHeaders:
         # Non-None values should be preserved
         assert result["exposureseconds"] == "60.00"
 
+    def test_empty_numeric_values_normalized_to_empty_string(self):
+        """Test that empty strings in float-converted headers don't raise."""
+        headers = {
+            "SITELAT": "",
+            "SET-TEMP": "  ",
+            "EXPOSURE": "60.0",
+        }
+        result = normalize_headers(headers)
+        assert result["latitude"] == ""
+        assert result["settemp"] == ""
+        assert result["exposureseconds"] == "60.00"
+
     def test_none_in_unknown_headers_normalized(self):
         """Test that None values in unknown headers are normalized to empty string."""
         headers = {
