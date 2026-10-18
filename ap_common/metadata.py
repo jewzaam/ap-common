@@ -8,6 +8,13 @@ import logging
 import os
 
 from ap_common.constants import (
+    DEFAULT_FITS_PATTERN,
+    FILE_EXTENSION_FITS,
+    FILE_EXTENSION_XISF,
+    NORMALIZED_HEADER_FILENAME,
+    NORMALIZED_HEADER_LATITUDE,
+    NORMALIZED_HEADER_LONGITUDE,
+    NORMALIZED_HEADER_TARGETNAME,
     NORMALIZED_HEADER_TYPE,
     TYPE_LIGHT,
 )
@@ -57,14 +64,14 @@ def get_metadata(
             headers and not provided as parameters
     """
     if patterns is None:
-        patterns = [r".*\.fits$"]
+        patterns = [DEFAULT_FITS_PATTERN]
     if required_properties is None:
         required_properties = []
 
     _required_properties = list(required_properties)
     # 'targetname' is always required, simply to have a value of None...
-    if "targetname" not in _required_properties:
-        _required_properties.append("targetname")
+    if NORMALIZED_HEADER_TARGETNAME not in _required_properties:
+        _required_properties.append(NORMALIZED_HEADER_TARGETNAME)
 
     # key of 'data' is the full path of the file
     data = {}
@@ -80,7 +87,7 @@ def get_metadata(
         filenames, desc="Loading metadata", enabled=printStatus
     ):
         d = get_file_headers(filename, profileFromPath=profileFromPath)
-        data[d["filename"]] = d
+        data[d[NORMALIZED_HEADER_FILENAME]] = d
 
     # make sure all required properties are at least None
     for f in data.keys():
@@ -146,7 +153,7 @@ def enrich_metadata(
         for rp in required_properties:
             if rp not in datum or datum[rp] is None or len(str(datum[rp])) == 0:
                 # required property is missing, must enrich.
-                to_enrich.append(datum["filename"])
+                to_enrich.append(datum[NORMALIZED_HEADER_FILENAME])
                 continue
 
     to_enrich.sort()
@@ -159,14 +166,14 @@ def enrich_metadata(
             datum = data[filename]
             # get headers from metadata.  normalize and use file naming override.
             enriched = None
-            if filename.endswith(".fits"):
+            if filename.endswith(FILE_EXTENSION_FITS):
                 enriched = get_fits_headers(
                     filename,
                     normalize=True,
                     file_naming_override=True,
                     profileFromPath=profileFromPath,
                 )
-            elif filename.endswith(".xisf"):
+            elif filename.endswith(FILE_EXTENSION_XISF):
                 enriched = get_xisf_headers(
                     filename,
                     normalize=True,
@@ -178,9 +185,9 @@ def enrich_metadata(
                 # Location not available from file headers
                 # Use provided latitude/longitude if available, otherwise leave unset
                 if latitude is not None:
-                    datum["latitude"] = latitude
+                    datum[NORMALIZED_HEADER_LATITUDE] = latitude
                 if longitude is not None:
-                    datum["longitude"] = longitude
+                    datum[NORMALIZED_HEADER_LONGITUDE] = longitude
                 # we can do no more, treat datum as if it were enriched.
                 enriched = datum
 
@@ -192,13 +199,13 @@ def enrich_metadata(
 
     # make sure 'filename' is always set.  enrich will strip it.
     for filename in data.keys():
-        data[filename]["filename"] = filename
+        data[filename][NORMALIZED_HEADER_FILENAME] = filename
 
     # Validate that required properties are present, especially location if required
     for filename in data.keys():
         datum = data[filename]
         for rp in required_properties:
-            if rp in ["latitude", "longitude"]:
+            if rp in [NORMALIZED_HEADER_LATITUDE, NORMALIZED_HEADER_LONGITUDE]:
                 if rp not in datum or datum[rp] is None or len(str(datum[rp])) == 0:
                     raise ValueError(
                         f"Required property '{rp}' is missing for file '{filename}'. "
@@ -419,7 +426,7 @@ def get_filtered_metadata(
             headers and not provided as parameters
     """
     if patterns is None:
-        patterns = [r".*\.fits$"]
+        patterns = [DEFAULT_FITS_PATTERN]
     if required_properties is None:
         required_properties = []
 
