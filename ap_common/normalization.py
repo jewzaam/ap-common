@@ -10,6 +10,48 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
+from ap_common.constants import (
+    HEADER_CCD_TEMP,
+    HEADER_DATE_OBS,
+    HEADER_EXP,
+    HEADER_EXPOSURE,
+    HEADER_EXPTIME,
+    HEADER_FILTER,
+    HEADER_FOCRATIO,
+    HEADER_IMAGETYP,
+    HEADER_INSTRUME,
+    HEADER_OBJECT,
+    HEADER_OBSGEO_B,
+    HEADER_OBSGEO_L,
+    HEADER_READOUTM,
+    HEADER_SET_TEMP,
+    HEADER_SETTEMP,
+    HEADER_SITELAT,
+    HEADER_SITELONG,
+    HEADER_TELESCOP,
+    NORMALIZED_HEADER_CAMERA,
+    NORMALIZED_HEADER_DATE,
+    NORMALIZED_HEADER_DATETIME,
+    NORMALIZED_HEADER_EXPOSURESECONDS,
+    NORMALIZED_HEADER_FILTER,
+    NORMALIZED_HEADER_FOCAL_RATIO,
+    NORMALIZED_HEADER_HFR,
+    NORMALIZED_HEADER_LATITUDE,
+    NORMALIZED_HEADER_LONGITUDE,
+    NORMALIZED_HEADER_OPTIC,
+    NORMALIZED_HEADER_PANEL,
+    NORMALIZED_HEADER_READOUTMODE,
+    NORMALIZED_HEADER_RMSAC,
+    NORMALIZED_HEADER_SETTEMP,
+    NORMALIZED_HEADER_STARS,
+    NORMALIZED_HEADER_TARGETNAME,
+    NORMALIZED_HEADER_TEMP,
+    NORMALIZED_HEADER_TYPE,
+    TYPE_BIAS,
+    TYPE_DARK,
+    TYPE_FLAT,
+    TYPE_LIGHT,
+)
 from ap_common.utils import build_profile
 
 logger = logging.getLogger(__name__)
@@ -235,12 +277,15 @@ def normalize_headers(
                 if value is None or str(value).strip() == "":
                     output[normalized_keyword] = ""
                 # For date/datetime normalization, pass timezone if provided
-                elif key == "DATE-OBS" and normalized_keyword in ["date", "datetime"]:
-                    if normalized_keyword == "date":
+                elif key == HEADER_DATE_OBS and normalized_keyword in [
+                    NORMALIZED_HEADER_DATE,
+                    NORMALIZED_HEADER_DATETIME,
+                ]:
+                    if normalized_keyword == NORMALIZED_HEADER_DATE:
                         output[normalized_keyword] = normalize_date(
                             value, timezone_offset_from_gmt=timezone_offset_from_gmt
                         )
-                    elif normalized_keyword == "datetime":
+                    elif normalized_keyword == NORMALIZED_HEADER_DATETIME:
                         output[normalized_keyword] = normalize_datetime(
                             value, timezone_offset_from_gmt=timezone_offset_from_gmt
                         )
@@ -251,10 +296,14 @@ def normalize_headers(
             # simply convert to lower case, normalize None to empty string
             output[key.lower()] = "" if value is None else value
     # final special case, strip panel out of target name
-    if "panel" not in output and "targetname" in output and output["targetname"]:
-        x = normalize_target_name(output["targetname"])
-        output["targetname"] = x[0]
-        output["panel"] = x[1]
+    if (
+        NORMALIZED_HEADER_PANEL not in output
+        and NORMALIZED_HEADER_TARGETNAME in output
+        and output[NORMALIZED_HEADER_TARGETNAME]
+    ):
+        x = normalize_target_name(output[NORMALIZED_HEADER_TARGETNAME])
+        output[NORMALIZED_HEADER_TARGETNAME] = x[0]
+        output[NORMALIZED_HEADER_PANEL] = x[1]
     # handle constants
     for key in CONSTANT_NORMALIZATION_DATA.keys():
         const_data = CONSTANT_NORMALIZATION_DATA[key]
@@ -366,13 +415,13 @@ def normalize_filename(
 
     # the absolute bare minimum required headers
     required_headers = [
-        "type",
-        "optic",
-        "camera",
-        "date",
-        "exposureseconds",
-        "datetime",
-        "filter",
+        NORMALIZED_HEADER_TYPE,
+        NORMALIZED_HEADER_OPTIC,
+        NORMALIZED_HEADER_CAMERA,
+        NORMALIZED_HEADER_DATE,
+        NORMALIZED_HEADER_EXPOSURESECONDS,
+        NORMALIZED_HEADER_DATETIME,
+        NORMALIZED_HEADER_FILTER,
     ]
 
     # check that all required headers are available.
@@ -384,14 +433,16 @@ def normalize_filename(
 
     # collect output as an array.  will join it at the end
     output = [output_directory]
-    type = headers["type"]
+    type = headers[NORMALIZED_HEADER_TYPE]
 
-    if type == "BIAS" or type == "DARK" or type == "FLAT":
+    if type == TYPE_BIAS or type == TYPE_DARK or type == TYPE_FLAT:
         # technically we care about focal ratio for flats
         # BUT this is used to repair raw data which does not include focal ratio
         # so we leave focal ratio out for flats.
-        output.append(f"{headers['optic']}+{headers['camera']}")
-    elif type == "LIGHT":
+        output.append(
+            f"{headers[NORMALIZED_HEADER_OPTIC]}+{headers[NORMALIZED_HEADER_CAMERA]}"
+        )
+    elif type == TYPE_LIGHT:
         # Use build_profile for consistent profile string construction
         profile = build_profile(headers)
         if profile is None:
@@ -400,12 +451,12 @@ def normalize_filename(
             )
         output.append(profile)
 
-    if type == "LIGHT":
+    if type == TYPE_LIGHT:
         if statedir is not None and len(statedir) > 0:
             output.append(statedir)
         try:
             # if there is no targetname this may be a snapshot.  ignore it and move on.
-            output.append(headers["targetname"])
+            output.append(headers[NORMALIZED_HEADER_TARGETNAME])
         except KeyError as e:
             logger.warning(
                 "missing targetname for LIGHT file, "
@@ -415,25 +466,33 @@ def normalize_filename(
             raise e
 
     # for all types...
-    output.append(f"DATE_{headers['date']}")
+    output.append(f"DATE_{headers[NORMALIZED_HEADER_DATE]}")
 
     # while we don't care about filter for bias and darks,
     # it is used generally included out of NINA
-    p = f"FILTER_{headers['filter']}_EXP_{headers['exposureseconds']}"
-    if "settemp" in headers:
-        p = f"{p}_SETTEMP_{headers['settemp']}"
-    if type == "LIGHT":
+    p = (
+        f"FILTER_{headers[NORMALIZED_HEADER_FILTER]}"
+        f"_EXP_{headers[NORMALIZED_HEADER_EXPOSURESECONDS]}"
+    )
+    if NORMALIZED_HEADER_SETTEMP in headers:
+        p = f"{p}_SETTEMP_{headers[NORMALIZED_HEADER_SETTEMP]}"
+    if type == TYPE_LIGHT:
         if (
-            "panel" in headers
-            and headers["panel"] is not None
-            and len(headers["panel"]) > 0
+            NORMALIZED_HEADER_PANEL in headers
+            and headers[NORMALIZED_HEADER_PANEL] is not None
+            and len(headers[NORMALIZED_HEADER_PANEL]) > 0
         ):
-            p += f"_PANEL_{headers['panel']}"
+            p += f"_PANEL_{headers[NORMALIZED_HEADER_PANEL]}"
     output.append(p)
 
     # for all types...
-    p = f"{headers['datetime']}"
-    for opt in ["hfr", "stars", "rmsac", "temp"]:
+    p = f"{headers[NORMALIZED_HEADER_DATETIME]}"
+    for opt in [
+        NORMALIZED_HEADER_HFR,
+        NORMALIZED_HEADER_STARS,
+        NORMALIZED_HEADER_RMSAC,
+        NORMALIZED_HEADER_TEMP,
+    ]:
         if opt in headers and headers[opt] is not None and len(headers[opt]) > 0:
             p += f"_{opt.upper()}_{headers[opt]}"
     p += f"{file_extension}"
@@ -449,42 +508,50 @@ def normalize_filename(
 # These must be defined after the normalization functions since they reference them
 
 CONSTANT_NORMALIZATION_DATA: dict[str, dict[str, dict[str, str]]] = {
-    "camera": {
+    NORMALIZED_HEADER_CAMERA: {
         "DWARFIII": {
-            "focal_ratio": "4.3",
-            "type": "LIGHT",
+            NORMALIZED_HEADER_FOCAL_RATIO: "4.3",
+            NORMALIZED_HEADER_TYPE: TYPE_LIGHT,
         }
     }
 }
 
 FILTER_NORMALIZATION_DATA: dict[str, dict[str, Callable[[Any], str]]] = {
-    "DATE-OBS": {
-        "date": (lambda x: normalize_date(x)),
-        "datetime": (lambda x: normalize_datetime(x)),
+    HEADER_DATE_OBS: {
+        NORMALIZED_HEADER_DATE: (lambda x: normalize_date(x)),
+        NORMALIZED_HEADER_DATETIME: (lambda x: normalize_datetime(x)),
     },
-    "FILTER": {"filter": (lambda x: normalize_filterName(x))},
-    "EXPOSURE": {  # preferred key for exposureseconds
-        "exposureseconds": (lambda x: "{:.2f}".format(float(x)))
+    HEADER_FILTER: {NORMALIZED_HEADER_FILTER: (lambda x: normalize_filterName(x))},
+    HEADER_EXPOSURE: {  # preferred key for exposureseconds
+        NORMALIZED_HEADER_EXPOSURESECONDS: (lambda x: "{:.2f}".format(float(x)))
     },
-    "EXPTIME": {"exposureseconds": (lambda x: "{:.2f}".format(float(x)))},
-    "EXP": {"exposureseconds": (lambda x: "{:.2f}".format(float(x)))},
-    "CCD-TEMP": {"temp": (lambda x: "{:.2f}".format(float(x)))},
-    "SETTEMP": {  # preferred key for settemp
-        "settemp": (lambda x: "{:.2f}".format(float(x)))
+    HEADER_EXPTIME: {
+        NORMALIZED_HEADER_EXPOSURESECONDS: (lambda x: "{:.2f}".format(float(x)))
     },
-    "SET-TEMP": {"settemp": (lambda x: "{:.2f}".format(float(x)))},
-    "IMAGETYP": {"type": (lambda x: str(x).upper())},
-    "TELESCOP": {"optic": str},
-    "FOCRATIO": {"focal_ratio": str},
-    "INSTRUME": {"camera": str},
-    "OBJECT": {"targetname": str},
-    "SITELAT": {  # preferred key for latitude
-        "latitude": (lambda x: "{0:.1f}".format(float(x)))
+    HEADER_EXP: {
+        NORMALIZED_HEADER_EXPOSURESECONDS: (lambda x: "{:.2f}".format(float(x)))
     },
-    "OBSGEO-B": {"latitude": (lambda x: "{0:.1f}".format(float(x)))},
-    "SITELONG": {  # preferred key for longitude
-        "longitude": (lambda x: "{0:.1f}".format(float(x)))
+    HEADER_CCD_TEMP: {NORMALIZED_HEADER_TEMP: (lambda x: "{:.2f}".format(float(x)))},
+    HEADER_SETTEMP: {  # preferred key for settemp
+        NORMALIZED_HEADER_SETTEMP: (lambda x: "{:.2f}".format(float(x)))
     },
-    "OBSGEO-L": {"longitude": (lambda x: "{0:.1f}".format(float(x)))},
-    "READOUTM": {"readoutmode": str},
+    HEADER_SET_TEMP: {NORMALIZED_HEADER_SETTEMP: (lambda x: "{:.2f}".format(float(x)))},
+    HEADER_IMAGETYP: {NORMALIZED_HEADER_TYPE: (lambda x: str(x).upper())},
+    HEADER_TELESCOP: {NORMALIZED_HEADER_OPTIC: str},
+    HEADER_FOCRATIO: {NORMALIZED_HEADER_FOCAL_RATIO: str},
+    HEADER_INSTRUME: {NORMALIZED_HEADER_CAMERA: str},
+    HEADER_OBJECT: {NORMALIZED_HEADER_TARGETNAME: str},
+    HEADER_SITELAT: {  # preferred key for latitude
+        NORMALIZED_HEADER_LATITUDE: (lambda x: "{0:.1f}".format(float(x)))
+    },
+    HEADER_OBSGEO_B: {
+        NORMALIZED_HEADER_LATITUDE: (lambda x: "{0:.1f}".format(float(x)))
+    },
+    HEADER_SITELONG: {  # preferred key for longitude
+        NORMALIZED_HEADER_LONGITUDE: (lambda x: "{0:.1f}".format(float(x)))
+    },
+    HEADER_OBSGEO_L: {
+        NORMALIZED_HEADER_LONGITUDE: (lambda x: "{0:.1f}".format(float(x)))
+    },
+    HEADER_READOUTM: {NORMALIZED_HEADER_READOUTMODE: str},
 }

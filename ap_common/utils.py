@@ -10,6 +10,13 @@ import re
 import zipfile
 from pathlib import Path
 
+from ap_common.constants import (
+    DEFAULT_FITS_PATTERN,
+    NORMALIZED_HEADER_CAMERA,
+    NORMALIZED_HEADER_FOCAL_RATIO,
+    NORMALIZED_HEADER_OPTIC,
+)
+
 
 def build_profile(headers: dict) -> str | None:
     """
@@ -28,9 +35,9 @@ def build_profile(headers: dict) -> str | None:
         - Only focal_ratio: None (not useful alone)
         - Nothing available: None
     """
-    optic = headers.get("optic")
-    focal_ratio = headers.get("focal_ratio")
-    camera = headers.get("camera")
+    optic = headers.get(NORMALIZED_HEADER_OPTIC)
+    focal_ratio = headers.get(NORMALIZED_HEADER_FOCAL_RATIO)
+    camera = headers.get(NORMALIZED_HEADER_CAMERA)
 
     parts = []
 
@@ -150,7 +157,7 @@ def get_filenames(
         List of matching file paths
     """
     if patterns is None:
-        patterns = [r".*\.fits$"]
+        patterns = [DEFAULT_FITS_PATTERN]
 
     filenames = []
     for pattern in patterns:

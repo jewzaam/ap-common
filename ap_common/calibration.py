@@ -59,11 +59,24 @@ def find_matching_darks(
 
     Example:
         # Search entire blink tree once (efficient!)
-        from ap_common.constants import CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_READOUTMODE,
+            NORMALIZED_HEADER_SETTEMP,
+        )
+        match_fields = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_SETTEMP,
+            NORMALIZED_HEADER_READOUTMODE,
+        ]
         darks = find_matching_darks(
             "/blink",
             light_meta,
-            match_fields=[CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE],
+            match_fields=match_fields,
             allow_shorter_exposure=True,
             recursive=True
         )
@@ -128,11 +141,23 @@ def find_matching_flats(
 
     Example:
         # When searching library - include DATE
-        from ap_common.constants import CAMERA, FILTER, GAIN, OFFSET, DATE
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_DATE,
+            NORMALIZED_HEADER_FILTER,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+        )
+        match_fields = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_FILTER,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+        ]
         flats = find_matching_flats(
             "/library",
             light_meta,
-            match_fields=[CAMERA, FILTER, GAIN, OFFSET, DATE],
+            match_fields=match_fields + [NORMALIZED_HEADER_DATE],
             recursive=True
         )
 
@@ -140,7 +165,7 @@ def find_matching_flats(
         flats = find_matching_flats(
             "/blink/M31/DATE_2024-01-15",
             light_meta,
-            match_fields=[CAMERA, FILTER, GAIN, OFFSET],  # No DATE
+            match_fields=match_fields,  # No DATE
             recursive=False  # Just this directory
         )
     """
@@ -199,11 +224,24 @@ def find_matching_bias(
 
     Example:
         # Recursive search of library
-        from ap_common.constants import CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_READOUTMODE,
+            NORMALIZED_HEADER_SETTEMP,
+        )
+        match_fields = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_SETTEMP,
+            NORMALIZED_HEADER_READOUTMODE,
+        ]
         bias_frames = find_matching_bias(
             "/library",
             light_meta,
-            match_fields=[CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE],
+            match_fields=match_fields,
             recursive=True
         )
     """
@@ -268,11 +306,24 @@ def find_matching_darks_from_cache(
         metadata = get_metadata(dirs=["/blink"], recursive=True)
 
         # Find matching darks from cache
-        from ap_common.constants import CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_READOUTMODE,
+            NORMALIZED_HEADER_SETTEMP,
+        )
+        match_fields = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_SETTEMP,
+            NORMALIZED_HEADER_READOUTMODE,
+        ]
         darks = find_matching_darks_from_cache(
             metadata,
             light_meta,
-            match_fields=[CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE],
+            match_fields=match_fields,
             allow_shorter_exposure=True
         )
     """
@@ -346,11 +397,21 @@ def find_matching_flats_from_cache(
         metadata = get_metadata(dirs=["/blink"], recursive=True)
 
         # Find matching flats from cache
-        from ap_common.constants import CAMERA, FILTER, GAIN, OFFSET
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_FILTER,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+        )
         flats = find_matching_flats_from_cache(
             metadata,
             light_meta,
-            match_fields=[CAMERA, FILTER, GAIN, OFFSET]
+            match_fields=[
+                NORMALIZED_HEADER_CAMERA,
+                NORMALIZED_HEADER_FILTER,
+                NORMALIZED_HEADER_GAIN,
+                NORMALIZED_HEADER_OFFSET,
+            ]
         )
     """
     # Build filter criteria
@@ -397,11 +458,24 @@ def find_matching_bias_from_cache(
         metadata = get_metadata(dirs=["/library"], recursive=True)
 
         # Find matching bias from cache
-        from ap_common.constants import CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE
+        from ap_common.constants import (
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_READOUTMODE,
+            NORMALIZED_HEADER_SETTEMP,
+        )
+        match_fields = [
+            NORMALIZED_HEADER_CAMERA,
+            NORMALIZED_HEADER_GAIN,
+            NORMALIZED_HEADER_OFFSET,
+            NORMALIZED_HEADER_SETTEMP,
+            NORMALIZED_HEADER_READOUTMODE,
+        ]
         bias_frames = find_matching_bias_from_cache(
             metadata,
             light_meta,
-            match_fields=[CAMERA, GAIN, OFFSET, SETTEMP, READOUTMODE]
+            match_fields=match_fields
         )
     """
     # Build filter criteria

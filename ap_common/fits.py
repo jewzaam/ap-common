@@ -11,6 +11,19 @@ import xisf
 from pathlib import Path
 from typing import Any, Dict, Optional
 from astropy.io import fits
+from ap_common.constants import (
+    DIRECTORY_ACCEPT,
+    FILE_EXTENSION_CR2,
+    HEADER_EXPOSURE,
+    HEADER_FOCRATIO,
+    HEADER_INSTRUME,
+    HEADER_OBJECT,
+    HEADER_SET_TEMP,
+    HEADER_SETTEMP,
+    HEADER_TELESCOP,
+    NORMALIZED_HEADER_FILENAME,
+    TYPE_LIGHT,
+)
 from ap_common.normalization import (
     normalize_headers,
     get_normalized_keys_set,
@@ -101,17 +114,17 @@ def get_file_headers(
         raise ValueError(f"Could not resolve path: {filename}")
     filename = resolved
 
-    directory_accept = directory_accept or "accept"
+    directory_accept = directory_accept or DIRECTORY_ACCEPT
 
     output = {
-        "filename": filename,  # before any name manipulations
+        NORMALIZED_HEADER_FILENAME: filename,  # before any name manipulations
     }
 
     # SPECIAL CASES:
     # SET-TEMP: A key with a dash.  Thanks NINA.
     # Handle it before parsing by removing the dash.
-    if "SET-TEMP" in filename:
-        filename = filename.replace("SET-TEMP", "SETTEMP")
+    if HEADER_SET_TEMP in filename:
+        filename = filename.replace(HEADER_SET_TEMP, HEADER_SETTEMP)
 
     # Hate special cases so it is optional.
     # Pick OBJECT from the path.  Is the beginning of the
@@ -125,7 +138,7 @@ def get_file_headers(
             icurr = filename_split[i]
             inext = filename_split[i + 1]
             if inext == directory_accept:
-                filename_new.append(f"OBJECT_{icurr}")
+                filename_new.append(f"{HEADER_OBJECT}_{icurr}")
             else:
                 filename_new.append(icurr)
         filename_new.append(filename_split[-1])
@@ -139,7 +152,11 @@ def get_file_headers(
         if m and m.groups() and len(m.groups()) == 5:
             # rebuild path by injecting property prefixes
             p = m.groups()
-            filename = f"{p[0]}TELESCOP_{p[1]}_FOCRATIO_{p[2]}_INSTRUME_{p[3]}{p[4]}"
+            filename = (
+                f"{p[0]}{HEADER_TELESCOP}_{p[1]}"
+                f"_{HEADER_FOCRATIO}_{p[2]}"
+                f"_{HEADER_INSTRUME}_{p[3]}{p[4]}"
+            )
 
     # just get the headers from the filename itself
     # don't be picky.  get EVERYTHING that could match
@@ -165,16 +182,16 @@ def get_file_headers(
 
     # SPECIAL CASES:
     # .CR2: If extension is .cr2 and TYPE is not already set, default TYPE to LIGHT
-    if filename.endswith(".cr2") and "TYPE" not in output:
-        output["TYPE"] = "LIGHT"
+    if filename.endswith(FILE_EXTENSION_CR2) and "TYPE" not in output:
+        output["TYPE"] = TYPE_LIGHT
 
     # SET-TEMP: The dash was previously removed.  Add it back.
-    if "SETTEMP" in output:
-        output["SET-TEMP"] = output["SETTEMP"]
+    if HEADER_SETTEMP in output:
+        output[HEADER_SET_TEMP] = output[HEADER_SETTEMP]
 
     # EXPOSURE: Value may end in "s", starting Dec 2023.  Thanks NINA.
-    if "EXPOSURE" in output and "s" in output["EXPOSURE"]:
-        output["EXPOSURE"] = output["EXPOSURE"].replace("s", "")
+    if HEADER_EXPOSURE in output and "s" in output[HEADER_EXPOSURE]:
+        output[HEADER_EXPOSURE] = output[HEADER_EXPOSURE].replace("s", "")
 
     if normalize:
         output = normalize_headers(output)
