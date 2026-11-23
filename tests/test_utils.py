@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from ap_common.utils import (
     build_profile,
+    format_focal_ratio,
     replace_env_vars,
     resolve_path,
     camelCase,
@@ -15,8 +16,36 @@ from ap_common.utils import (
 )
 
 
+class TestFormatFocalRatio:
+    """Tests for format_focal_ratio function."""
+
+    def test_one_decimal(self):
+        """Values are always shown with exactly one decimal place."""
+        assert format_focal_ratio("10") == "10.0"
+        assert format_focal_ratio("10.0") == "10.0"
+        assert format_focal_ratio("10.04") == "10.0"
+        assert format_focal_ratio("5.6") == "5.6"
+        assert format_focal_ratio(10) == "10.0"
+
+    def test_round_half_up(self):
+        """Ties round up, not to even."""
+        assert format_focal_ratio("5.55") == "5.6"
+        assert format_focal_ratio("5.25") == "5.3"
+        assert format_focal_ratio("5.05") == "5.1"
+
+    def test_non_numeric_unchanged(self):
+        """Non-numeric values are passed through."""
+        assert format_focal_ratio("abc") == "abc"
+        assert format_focal_ratio("nan") == "nan"
+
+
 class TestBuildProfile:
     """Tests for build_profile function."""
+
+    def test_integer_focal_ratio(self):
+        """Test integer focal ratio gets one decimal."""
+        headers = {"optic": "C8E", "focal_ratio": "10", "camera": "ASI294MC"}
+        assert build_profile(headers) == "C8E@f10.0+ASI294MC"
 
     def test_all_keys_present(self):
         """Test profile is built when all keys are present."""
